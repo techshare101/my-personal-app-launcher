@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - App Launcher</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            text-align: center;
+            max-width: 600px;
+            padding: 40px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #1976d2;
+        }
+        p {
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .offline-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        .cached-apps {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="offline-icon">📡</div>
+        <h1>You're Offline</h1>
+        <p>Don't worry! You can still access your cached apps and continue working offline.</p>
+        <div class="cached-apps">
+            <h2>Available Offline</h2>
+            <div id="offlineApps">
+                <!-- Dynamically populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    <script>
+        // This will be populated with cached apps from IndexedDB
+        if ('indexedDB' in window) {
+            const request = indexedDB.open('AppLauncherDB', 1);
+            request.onsuccess = (event) => {
+                const db = event.target.result;
+                const transaction = db.transaction(['apps'], 'readonly');
+                const store = transaction.objectStore('apps');
+                const getAllRequest = store.getAll();
+
+                getAllRequest.onsuccess = () => {
+                    const apps = getAllRequest.result;
+                    const offlineApps = document.getElementById('offlineApps');
+                    
+                    if (apps.length > 0) {
+                        const appList = apps
+                            .filter(app => app.offlineCapable)
+                            .map(app => `<div>${app.name}</div>`)
+                            .join('');
+                        offlineApps.innerHTML = appList;
+                    } else {
+                        offlineApps.innerHTML = '<p>No offline apps available</p>';
+                    }
+                };
+            };
+        }
+    </script>
+</body>
+</html>
