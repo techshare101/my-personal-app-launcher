@@ -1,59 +1,92 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
 class ChatService {
   constructor() {
     this.context = [];
+    this.genAI = null;
+    this.model = null;
+    this.chat = null;
+    this.initialize();
+  }
+
+  initialize() {
+    // Get the API key from environment variables
+    const apiKey = process.env.REACT_APP_GEMINI_KEY || 
+                  process.env.REACT_APP_GEMINI_API_KEY || 
+                  process.env.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      console.error('Gemini API key not found in environment variables');
+      return;
+    }
+
+    // Initialize Gemini with your API key
+    this.genAI = new GoogleGenerativeAI(apiKey);
+    
+    // For most chat applications, we recommend using the chat-bison-001 model
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    
+    // Start a new chat
+    this.chat = this.model.startChat({
+      history: [],
+      generationConfig: {
+        maxOutputTokens: 1000,
+        temperature: 0.7,
+        topP: 0.8,
+        topK: 40,
+      },
+    });
   }
 
   async sendMessage(message) {
-    // Simulate AI response delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      if (!this.chat) {
+        this.initialize();
+      }
 
-    // Store message in context
-    this.context.push({ role: 'user', content: message });
+      // Store user message in context
+      this.context.push({ role: 'user', content: message });
 
-    // Simple response logic (replace with actual AI integration)
-    let response = '';
-    const lowerMessage = message.toLowerCase();
+      // Prepare the chat prompt with app-specific context
+      const prompt = `As an AI assistant for SmartLaunch Pro, a personal app launcher and productivity tool, help the user with their request. The available features include app management, workflow automation, and productivity tracking.
 
-    if (lowerMessage.includes('recommend') && lowerMessage.includes('app')) {
-      response = "Based on your usage patterns, I recommend trying these apps:\n\n" +
-        "1. Notion - Great for note-taking and documentation\n" +
-        "2. Slack - Excellent for team communication\n" +
-        "3. VS Code - Perfect for coding tasks\n\n" +
-        "Would you like more details about any of these apps?";
-    } else if (lowerMessage.includes('workflow')) {
-      response = "I can help you create a workflow. What apps would you like to connect? " +
-        "For example, I can help you set up:\n\n" +
-        "• Automatic file backups\n" +
-        "• Email notifications for important events\n" +
-        "• Task synchronization between apps";
-    } else if (lowerMessage.includes('productivity') || lowerMessage.includes('tips')) {
-      response = "Here are some productivity tips:\n\n" +
-        "1. Use keyboard shortcuts for frequent actions\n" +
-        "2. Set up automated workflows for repetitive tasks\n" +
-        "3. Organize apps by categories or projects\n" +
-        "4. Enable quick launch shortcuts for your most-used apps";
-    } else {
-      response = "I'm here to help! I can:\n\n" +
-        "• Recommend apps for specific tasks\n" +
-        "• Help you create workflows\n" +
-        "• Share productivity tips\n" +
-        "• Answer questions about app features\n\n" +
-        "What would you like to know?";
+User's message: ${message}
+
+Please provide a helpful response while considering:
+1. App recommendations based on user needs
+2. Workflow automation suggestions
+3. Productivity tips and insights
+4. Integration possibilities with other tools
+5. Best practices for app organization
+
+Response:`;
+
+      // Get the response from Gemini
+      const result = await this.chat.sendMessage(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      // Store assistant response in context
+      this.context.push({ role: 'assistant', content: text });
+
+      return text;
+    } catch (error) {
+      console.error('Error sending message to Gemini:', error);
+      return "I apologize, but I'm having trouble connecting to the AI service at the moment. Please try again later.";
     }
-
-    // Store response in context
-    this.context.push({ role: 'assistant', content: response });
-
-    return response;
   }
 
   clearContext() {
     this.context = [];
+    this.initialize(); // Start a new chat session
   }
 
-  // Future enhancement: Integrate with actual AI service
-  async connectToAI() {
-    // Implementation for connecting to AI service
+  // Helper method to format the chat history for Gemini
+  formatHistory() {
+    return this.context.map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.content }],
+    }));
   }
 }
 
