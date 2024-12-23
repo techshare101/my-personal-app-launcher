@@ -4,8 +4,9 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-import AppLayout from './components/AppLayout';
+import { LayoutProvider } from './contexts/LayoutContext';
 import theme from './theme';
+import AppLayout from './components/AppLayout';
 
 function App() {
   return (
@@ -13,9 +14,11 @@ function App() {
       <CssBaseline />
       <AuthProvider>
         <NotificationProvider>
-          <Router>
-            <AppLayout />
-          </Router>
+          <LayoutProvider>
+            <Router>
+              <AppLayout />
+            </Router>
+          </LayoutProvider>
         </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>

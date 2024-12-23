@@ -10,12 +10,19 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  CircularProgress,
+  FormControlLabel,
+  Switch,
   Box,
+  Chip,
+  IconButton,
+  InputAdornment,
+  CircularProgress,
   Typography,
   Alert,
   Snackbar,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 
 const categories = [
   'productivity',
@@ -26,6 +33,18 @@ const categories = [
   'finance',
   'security',
   'utilities'
+];
+
+const CATEGORIES = [
+  'Productivity',
+  'Communication',
+  'Development',
+  'Design',
+  'Social',
+  'Entertainment',
+  'Business',
+  'Education',
+  'Other'
 ];
 
 const FALLBACK_DATA = {
@@ -122,7 +141,16 @@ const FALLBACK_DATA = {
 };
 
 const AddAppDialog = ({ open, onClose, onAdd }) => {
-  const [appName, setAppName] = useState('');
+  const [appData, setAppData] = useState({
+    name: '',
+    description: '',
+    url: '',
+    category: '',
+    thumbnail: '',
+    tags: [],
+    offlineCapable: false
+  });
+  const [newTag, setNewTag] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -323,32 +351,64 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
     return matches[0] || 'utilities';
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!appName.trim()) return;
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setAppData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSwitchChange = (e) => {
+    const { name, checked } = e.target;
+    setAppData(prev => ({
+      ...prev,
+      [name]: checked
+    }));
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !appData.tags.includes(newTag.trim())) {
+      setAppData(prev => ({
+        ...prev,
+        tags: [...prev.tags, newTag.trim()]
+      }));
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setAppData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (!appData.name.trim() || !appData.url.trim() || !appData.category.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
       // First, search for the app's website
-      const webData = await fetchGoogleSearch(appName, 'web');
-      const url = findOfficialUrl(webData, appName) || 
-                 `https://www.google.com/search?q=${encodeURIComponent(appName + ' download')}`;
+      const webData = await fetchGoogleSearch(appData.name, 'web');
+      const url = findOfficialUrl(webData, appData.name) || 
+                 `https://www.google.com/search?q=${encodeURIComponent(appData.name + ' download')}`;
 
       // Then search for the app's icon
-      const imageData = await fetchGoogleSearch(appName, 'image');
-      const thumbnail = findBestImage(imageData, appName) || 
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(appName)}&size=512&background=random&color=fff&bold=true&format=svg`;
+      const imageData = await fetchGoogleSearch(appData.name, 'image');
+      const thumbnail = findBestImage(imageData, appData.name) || 
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(appData.name)}&size=512&background=random&color=fff&bold=true&format=svg`;
 
       // Get the best description
-      const description = webData.items?.[0]?.snippet || `${appName} application`;
+      const description = webData.items?.[0]?.snippet || `${appData.name} application`;
 
       // Suggest a category based on the app name and description
-      const category = suggestCategory(appName, description);
+      const category = suggestCategory(appData.name, description);
 
       console.log('Adding app with:', { 
-        name: appName,
+        name: appData.name,
         thumbnail,
         description,
         url,
@@ -356,15 +416,22 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
       });
 
       onAdd({
-        name: appName,
+        name: appData.name,
         thumbnail,
         description,
         url,
         category
       });
 
-      setAppName('');
-      onClose();
+      setAppData({
+        name: '',
+        description: '',
+        url: '',
+        category: '',
+        thumbnail: '',
+        tags: [],
+        offlineCapable: false
+      });
     } catch (err) {
       console.error('Error fetching app data:', err);
       setError(err.message || 'Failed to fetch app information. Please try again.');
@@ -373,57 +440,124 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
     }
   };
 
+  const isValid = appData.name && appData.url && appData.category;
+
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Application</DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
+        <DialogTitle>Add New App</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
             <TextField
-              autoFocus
-              margin="dense"
-              label="Application Name"
+              name="name"
+              label="App Name"
+              value={appData.name}
+              onChange={handleChange}
               fullWidth
-              variant="outlined"
-              value={appName}
-              onChange={(e) => setAppName(e.target.value)}
-              disabled={loading}
-              helperText="Try popular apps like 'vscode', 'chrome', 'slack', 'discord', 'spotify', etc."
+              required
             />
-            {error && (
-              <Box mt={2}>
-                <Alert severity="error">{error}</Alert>
+
+            <TextField
+              name="description"
+              label="Description"
+              value={appData.description}
+              onChange={handleChange}
+              fullWidth
+              multiline
+              rows={2}
+            />
+
+            <TextField
+              name="url"
+              label="App URL"
+              value={appData.url}
+              onChange={handleChange}
+              fullWidth
+              required
+              type="url"
+            />
+
+            <FormControl fullWidth required>
+              <InputLabel>Category</InputLabel>
+              <Select
+                name="category"
+                value={appData.category}
+                onChange={handleChange}
+                label="Category"
+              >
+                {CATEGORIES.map((category) => (
+                  <MenuItem key={category} value={category.toLowerCase()}>
+                    {category}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              name="thumbnail"
+              label="Thumbnail URL"
+              value={appData.thumbnail}
+              onChange={handleChange}
+              fullWidth
+              type="url"
+            />
+
+            <Box>
+              <TextField
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                label="Add Tags"
+                size="small"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleAddTag} edge="end">
+                        <AddIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddTag();
+                  }
+                }}
+              />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {appData.tags.map((tag) => (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    onDelete={() => handleRemoveTag(tag)}
+                    size="small"
+                  />
+                ))}
               </Box>
-            )}
-            {loading && (
-              <Box display="flex" justifyContent="center" mt={2}>
-                <CircularProgress />
-              </Box>
-            )}
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Enter the name of the application you want to add. We'll automatically fetch its thumbnail and description.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading || !appName.trim()}
-              sx={{
-                background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
-                  opacity: 0.9,
-                },
-              }}
-            >
-              Add Application
-            </Button>
-          </DialogActions>
-        </form>
+            </Box>
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={appData.offlineCapable}
+                  onChange={handleSwitchChange}
+                  name="offlineCapable"
+                />
+              }
+              label="Available Offline"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={!isValid || loading}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Add App'}
+          </Button>
+        </DialogActions>
       </Dialog>
       <Snackbar 
         open={!!error} 
