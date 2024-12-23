@@ -7,6 +7,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { LayoutProvider } from './contexts/LayoutContext';
 import theme from './theme';
 import AppLayout from './components/AppLayout';
+import ChatInterface from './components/chat/ChatInterface';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           </LayoutProvider>
         </NotificationProvider>
       </AuthProvider>
+      <ChatInterface />
     </ThemeProvider>
   );
 }
