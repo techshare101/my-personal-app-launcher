@@ -18,6 +18,8 @@ import {
   ListItemSecondaryAction,
   Avatar,
   Paper,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import LaunchIcon from '@mui/icons-material/Launch';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -37,6 +39,34 @@ export default function AppList({ apps, onAddClick, onDeleteApp }) {
   const { layoutType, columnCount } = useLayout();
   const { currentUser } = useAuth();
   const [activeSession, setActiveSession] = useState(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const isLaptop = useMediaQuery(theme.breakpoints.down('lg'));
+
+  const getEffectiveLayout = () => {
+    if (layoutType !== LAYOUT_TYPES.ADAPTIVE) {
+      return layoutType;
+    }
+
+    // For adaptive view, choose layout based on screen size
+    if (isMobile) {
+      return LAYOUT_TYPES.LIST; // List view for mobile
+    }
+    return LAYOUT_TYPES.GRID; // Grid view for larger screens
+  };
+
+  const getGridColumns = () => {
+    if (layoutType === LAYOUT_TYPES.GRID) {
+      return columnCount;
+    }
+    
+    // For adaptive view, adjust columns based on screen size
+    if (isMobile) return 1;
+    if (isTablet) return 2;
+    if (isLaptop) return 3;
+    return 4;
+  };
 
   const handleLaunchApp = async (app) => {
     if (!isOnline && !app.offlineCapable) {
@@ -94,11 +124,22 @@ export default function AppList({ apps, onAddClick, onDeleteApp }) {
   };
 
   const renderGridView = () => (
-    <Grid container spacing={3}>
+    <Grid 
+      container 
+      spacing={{ xs: 2, sm: 3 }}
+      columns={{ xs: 1, sm: 8, md: 12, lg: 16 }}
+      sx={{
+        '& .MuiGrid-item': {
+          display: 'flex',
+          transition: 'all 0.3s ease-in-out',
+        }
+      }}
+    >
       {/* Add App Card */}
-      <Grid item xs={12} sm={6} md={4} lg={3}>
+      <Grid item xs={1} sm={4} md={4} lg={4}>
         <Card
           sx={{
+            width: '100%',
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
@@ -106,8 +147,9 @@ export default function AppList({ apps, onAddClick, onDeleteApp }) {
             '&:hover': {
               backgroundColor: 'action.hover',
               transform: 'translateY(-4px)',
+              boxShadow: (theme) => theme.shadows[8],
             },
-            transition: 'transform 0.2s ease-in-out, background-color 0.2s ease-in-out',
+            transition: 'all 0.2s ease-in-out',
           }}
           onClick={onAddClick}
         >
@@ -119,9 +161,25 @@ export default function AppList({ apps, onAddClick, onDeleteApp }) {
             justifyContent: 'center',
             gap: 2,
           }}>
-            <AddIcon sx={{ fontSize: 48, color: 'action.active' }} />
-            <Typography variant="h6" component="div">
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'action.selected',
+                mb: 2,
+              }}
+            >
+              <AddIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+            </Box>
+            <Typography variant="h6" component="div" color="primary">
               Add New App
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center">
+              Click to add a new application to your launcher
             </Typography>
           </CardContent>
         </Card>
@@ -129,58 +187,118 @@ export default function AppList({ apps, onAddClick, onDeleteApp }) {
 
       {/* App Cards */}
       {apps.map((app) => (
-        <Grid item key={app.id} xs={12} sm={6} md={4} lg={3}>
+        <Grid item key={app.id} xs={1} sm={4} md={4} lg={4}>
           <Card
             sx={{
+              width: '100%',
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
+              position: 'relative',
               '&:hover': {
                 transform: 'translateY(-4px)',
+                boxShadow: (theme) => theme.shadows[8],
+                '& .app-actions': {
+                  opacity: 1,
+                  transform: 'translateY(0)',
+                },
               },
-              transition: 'transform 0.2s ease-in-out',
+              transition: 'all 0.2s ease-in-out',
               opacity: !isOnline && !app.offlineCapable ? 0.7 : 1,
             }}
           >
-            {loadingImages[app.id] !== false ? (
-              <Skeleton
-                variant="rectangular"
-                height={140}
-                animation="wave"
-                sx={{ bgcolor: 'grey.100' }}
-              />
-            ) : null}
-            <CardMedia
-              component="img"
-              sx={{
-                height: 140,
-                objectFit: 'contain',
-                bgcolor: 'background.paper',
-                p: 2,
-                display: loadingImages[app.id] === false ? 'block' : 'none'
-              }}
-              image={getAppIcon(app)}
-              alt={app.name}
-              onLoad={() => handleImageLoad(app.id)}
-              onError={() => handleImageError(app.id)}
-            />
-            <CardContent sx={{ flexGrow: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                  {app.name}
-                </Typography>
+            {/* Offline/Online Badge */}
+            {(!isOnline || app.offlineCapable) && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  zIndex: 1,
+                  bgcolor: 'background.paper',
+                  borderRadius: '50%',
+                  p: 0.5,
+                  boxShadow: 1,
+                }}
+              >
                 {app.offlineCapable ? (
                   <Badge color="success" variant="dot">
                     <CloudDoneIcon fontSize="small" color="success" />
                   </Badge>
                 ) : (
-                  !isOnline && <CloudOffIcon fontSize="small" color="action" />
+                  <CloudOffIcon fontSize="small" color="action" />
                 )}
               </Box>
-              <Typography variant="body2" color="text.secondary">
+            )}
+
+            {/* App Image */}
+            <Box sx={{ position: 'relative', pt: '56.25%' /* 16:9 aspect ratio */ }}>
+              {loadingImages[app.id] !== false ? (
+                <Skeleton
+                  variant="rectangular"
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    bgcolor: 'grey.100'
+                  }}
+                  animation="wave"
+                />
+              ) : null}
+              <CardMedia
+                component="img"
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  bgcolor: 'background.paper',
+                  p: 2,
+                  display: loadingImages[app.id] === false ? 'block' : 'none'
+                }}
+                image={getAppIcon(app)}
+                alt={app.name}
+                onLoad={() => handleImageLoad(app.id)}
+                onError={() => handleImageError(app.id)}
+              />
+            </Box>
+
+            {/* App Content */}
+            <CardContent sx={{ flexGrow: 1, pt: 2 }}>
+              <Typography 
+                variant="h6" 
+                component="div" 
+                sx={{ 
+                  mb: 1,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 1,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {app.name}
+              </Typography>
+              <Typography 
+                variant="body2" 
+                color="text.secondary"
+                sx={{
+                  mb: 2,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  height: '2.5em',
+                }}
+              >
                 {app.description}
               </Typography>
-              <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 <Chip
                   label={app.category}
                   size="small"
@@ -198,7 +316,7 @@ export default function AppList({ apps, onAddClick, onDeleteApp }) {
                     variant="outlined"
                   />
                 )}
-                {app.tags?.map((tag) => (
+                {app.tags?.slice(0, 2).map((tag) => (
                   <Chip
                     key={tag}
                     label={tag}
@@ -207,9 +325,31 @@ export default function AppList({ apps, onAddClick, onDeleteApp }) {
                     sx={{ textTransform: 'capitalize' }}
                   />
                 ))}
+                {app.tags?.length > 2 && (
+                  <Chip
+                    label={`+${app.tags.length - 2}`}
+                    size="small"
+                    variant="outlined"
+                    sx={{ textTransform: 'capitalize' }}
+                  />
+                )}
               </Box>
             </CardContent>
-            <CardActions>
+
+            {/* App Actions */}
+            <CardActions
+              className="app-actions"
+              sx={{
+                justifyContent: 'flex-end',
+                gap: 1,
+                bgcolor: 'background.paper',
+                borderTop: 1,
+                borderColor: 'divider',
+                opacity: { xs: 1, sm: 0 },
+                transform: { xs: 'none', sm: 'translateY(100%)' },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
               <IconButton
                 size="small"
                 onClick={() => handleLaunchApp(app)}
@@ -360,7 +500,7 @@ export default function AppList({ apps, onAddClick, onDeleteApp }) {
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
         <LayoutSwitcher />
       </Box>
-      {layoutType === LAYOUT_TYPES.LIST ? renderListView() : renderGridView()}
+      {getEffectiveLayout() === LAYOUT_TYPES.LIST ? renderListView() : renderGridView()}
     </Box>
   );
 }

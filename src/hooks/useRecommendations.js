@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useFirestore } from './useFirestore';
 import { getAppRecommendations, getTimeBasedSuggestions } from '../services/gemini';
+import { useAuth } from '../contexts/AuthContext';
 
 export function useRecommendations() {
   const [recommendations, setRecommendations] = useState([]);
@@ -8,6 +9,7 @@ export function useRecommendations() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { apps } = useFirestore();
+  const { currentUser } = useAuth();
 
   const getPreferredCategories = (apps) => {
     const categoryCount = apps.reduce((acc, app) => {
@@ -22,29 +24,77 @@ export function useRecommendations() {
   };
 
   const getFrequentApps = (apps) => {
-    // In a real app, you'd track usage frequency in Firestore
-    // For now, we'll just return the first few apps
-    return apps.slice(0, 5);
+    // Sort apps by usage count (if available) or last used timestamp
+    return apps
+      .sort((a, b) => {
+        if (a.usageCount !== b.usageCount) {
+          return (b.usageCount || 0) - (a.usageCount || 0);
+        }
+        return new Date(b.lastUsed || 0) - new Date(a.lastUsed || 0);
+      })
+      .slice(0, 5);
+  };
+
+  const getUserWorkSchedule = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    
+    // Basic work schedule detection
+    if (hour >= 9 && hour < 17) {
+      return 'WORK';
+    } else if (hour >= 17 && hour < 23) {
+      return 'PERSONAL';
+    } else {
+      return 'OFF_HOURS';
+    }
   };
 
   const fetchRecommendations = async () => {
-    if (!apps.length) return;
+    if (!apps.length || !currentUser) return;
 
     setLoading(true);
     try {
+      const now = new Date();
       const userContext = {
-        currentTime: new Date().toLocaleTimeString(),
+        currentTime: now.toLocaleTimeString(),
+        currentDay: now.toLocaleDateString('en-US', { weekday: 'long' }),
+        timeOfDay: getUserWorkSchedule(),
         frequentApps: getFrequentApps(apps),
         preferredCategories: getPreferredCategories(apps),
-        currentTask: null // This could be set based on user input or calendar integration
+        userPreferences: {
+          email: currentUser.email,
+          displayName: currentUser.displayName,
+          // Add any user preferences from profile settings
+          language: 'en',
+          theme: 'dark',
+          workHours: {
+            start: '09:00',
+            end: '17:00'
+          }
+        },
+        recentActivity: apps
+          .filter(app => app.lastUsed)
+          .sort((a, b) => new Date(b.lastUsed) - new Date(a.lastUsed))
+          .slice(0, 3)
+          .map(app => ({
+            name: app.name,
+            category: app.category,
+            lastUsed: app.lastUsed
+          }))
       };
 
       const [recResult, timeResult] = await Promise.all([
         getAppRecommendations(userContext),
-        getTimeBasedSuggestions(apps, new Date().toLocaleTimeString())
+        getTimeBasedSuggestions(apps, userContext)
       ]);
 
-      setRecommendations(recResult.recommendations);
+      // Filter out apps that user already has
+      const existingAppNames = new Set(apps.map(app => app.name.toLowerCase()));
+      const filteredRecommendations = recResult.recommendations.filter(
+        rec => !existingAppNames.has(rec.name.toLowerCase())
+      );
+
+      setRecommendations(filteredRecommendations);
       setTimeSuggestions(timeResult.suggestions);
       setError(null);
     } catch (err) {
@@ -58,11 +108,11 @@ export function useRecommendations() {
   useEffect(() => {
     fetchRecommendations();
     
-    // Refresh recommendations every hour
-    const interval = setInterval(fetchRecommendations, 60 * 60 * 1000);
+    // Refresh recommendations every 30 minutes
+    const interval = setInterval(fetchRecommendations, 30 * 60 * 1000);
     
     return () => clearInterval(interval);
-  }, [apps]);
+  }, [apps, currentUser]);
 
   return {
     recommendations,
