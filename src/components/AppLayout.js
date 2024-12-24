@@ -9,9 +9,9 @@ import {
   IconButton,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationCenter from './NotificationCenter';
+import UserProfile from './UserProfile';
 import Dashboard from '../pages/Dashboard';
 import Hero from './Hero';
 import Features from './Features';
@@ -19,7 +19,7 @@ import Footer from './Footer';
 import GetStarted from '../pages/GetStarted';
 
 export default function AppLayout() {
-  const { currentUser, loginWithGoogle, logout } = useAuth();
+  const { currentUser, loginWithGoogle } = useAuth();
 
   return (
     <>
@@ -40,40 +40,49 @@ export default function AppLayout() {
           </Typography>
 
           {currentUser ? (
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <NotificationCenter />
-              <IconButton
-                color="inherit"
-                sx={{ ml: 2 }}
-                onClick={logout}
-              >
-                <AccountCircleIcon />
-              </IconButton>
+              <UserProfile />
             </Box>
           ) : (
-            <Button color="inherit" onClick={loginWithGoogle}>
-              Login
+            <Button 
+              color="inherit" 
+              onClick={loginWithGoogle}
+              startIcon={
+                <img 
+                  src="https://www.google.com/favicon.ico" 
+                  alt="Google"
+                  style={{ width: 16, height: 16 }}
+                />
+              }
+            >
+              Sign In with Google
             </Button>
           )}
         </Toolbar>
       </AppBar>
 
-      <Routes>
-        <Route path="/" element={
-          <div>
-            <Hero />
-            <Features />
-            <Footer />
-          </div>
-        } />
-        <Route path="/get-started" element={<GetStarted />} />
-        <Route path="/dashboard" element={
-          <React.Suspense fallback={<div>Loading...</div>}>
-            <Dashboard />
-          </React.Suspense>
-        } />
-        <Route path="/apps" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+      <Box sx={{ minHeight: 'calc(100vh - 64px)' }}>
+        <Routes>
+          <Route path="/" element={
+            currentUser ? <Navigate to="/dashboard" /> : (
+              <>
+                <Hero />
+                <Features />
+                <Footer />
+              </>
+            )
+          } />
+          <Route
+            path="/dashboard/*"
+            element={currentUser ? <Dashboard /> : <Navigate to="/" />}
+          />
+          <Route
+            path="/get-started"
+            element={currentUser ? <GetStarted /> : <Navigate to="/" />}
+          />
+        </Routes>
+      </Box>
     </>
   );
 }

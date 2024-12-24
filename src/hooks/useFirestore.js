@@ -28,17 +28,21 @@ export function useFirestore() {
     if (!currentUser) {
       setApps([]);
       setLoading(false);
+      setError('Please sign in to access your apps');
       return;
     }
 
     setLoading(true);
+    setError(null);
 
     const loadApps = async () => {
       try {
         if (!isOnline) {
           // Load from cache when offline
           const cachedApps = await cacheService.getCachedApps();
-          setApps(cachedApps);
+          if (cachedApps.length > 0) {
+            setApps(cachedApps.filter(app => app.userId === currentUser.uid));
+          }
           setLoading(false);
           return;
         }
@@ -49,29 +53,39 @@ export function useFirestore() {
         );
 
         const unsubscribe = onSnapshot(q, async (snapshot) => {
-          const appsData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
+          try {
+            const appsData = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
 
-          // Cache apps for offline use
-          for (const app of appsData) {
-            await cacheService.cacheApp(app);
+            // Cache apps for offline use
+            for (const app of appsData) {
+              await cacheService.cacheApp(app);
+            }
+
+            setApps(appsData);
+            setLoading(false);
+            setError(null);
+          } catch (err) {
+            console.error('Error processing apps data:', err);
+            setError('Error loading apps: ' + err.message);
+            setLoading(false);
           }
-
-          setApps(appsData);
-          setLoading(false);
-          setError(null);
         }, (err) => {
           console.error('Error fetching apps:', err);
-          setError(err.message);
+          if (err.code === 'permission-denied') {
+            setError('Error loading apps: Missing or insufficient permissions. Please sign out and sign in again.');
+          } else {
+            setError('Error loading apps: ' + err.message);
+          }
           setLoading(false);
         });
 
         return () => unsubscribe();
       } catch (err) {
         console.error('Error in loadApps:', err);
-        setError(err.message);
+        setError('Error loading apps: ' + err.message);
         setLoading(false);
       }
     };

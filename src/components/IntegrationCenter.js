@@ -169,6 +169,17 @@ export default function IntegrationCenter() {
   const [configOpen, setConfigOpen] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [connectedApps, setConnectedApps] = useState([]);
+  const [customIntegrations, setCustomIntegrations] = useState([]);
+  const [addCustomOpen, setAddCustomOpen] = useState(false);
+  const [customIntegration, setCustomIntegration] = useState({
+    name: '',
+    description: '',
+    category: '',
+    apiEndpoint: '',
+    apiKey: '',
+    webhookUrl: '',
+    icon: '🔌'
+  });
 
   const handleConnect = async (integration) => {
     setSelectedIntegration(integration);
@@ -188,41 +199,73 @@ export default function IntegrationCenter() {
     setConfigOpen(false);
   };
 
+  const handleCustomChange = (field) => (event) => {
+    setCustomIntegration(prev => ({
+      ...prev,
+      [field]: event.target.value
+    }));
+  };
+
+  const handleAddCustom = () => {
+    const newIntegration = {
+      ...customIntegration,
+      id: `custom-${Date.now()}`,
+      status: 'available',
+      popular: false,
+      isCustom: true
+    };
+    setCustomIntegrations(prev => [...prev, newIntegration]);
+    setAddCustomOpen(false);
+    setCustomIntegration({
+      name: '',
+      description: '',
+      category: '',
+      apiEndpoint: '',
+      apiKey: '',
+      webhookUrl: '',
+      icon: '🔌'
+    });
+  };
+
+  const allIntegrations = [...INTEGRATIONS, ...customIntegrations];
+
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          Integration Center
-        </Typography>
-        <Typography color="text.secondary">
-          Connect your favorite tools and services to enhance your workflow
-        </Typography>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box>
+          <Typography variant="h5" gutterBottom>
+            Integration Center
+          </Typography>
+          <Typography color="text.secondary">
+            Connect your favorite tools and services to enhance your workflow
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setAddCustomOpen(true)}
+        >
+          Add Custom Integration
+        </Button>
       </Box>
 
       <Grid container spacing={3}>
-        {INTEGRATIONS.map((integration) => (
+        {allIntegrations.map((integration) => (
           <Grid item xs={12} sm={6} md={4} key={integration.id}>
             <Card 
               sx={{ 
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                position: 'relative',
-                '&:hover': {
-                  boxShadow: 3,
-                }
+                position: 'relative'
               }}
             >
-              {integration.popular && (
+              {integration.isCustom && (
                 <Chip
-                  label="Popular"
-                  color="primary"
+                  label="Custom"
                   size="small"
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                  }}
+                  color="secondary"
+                  sx={{ position: 'absolute', top: 8, right: 8 }}
                 />
               )}
               <CardContent sx={{ flexGrow: 1 }}>
@@ -237,11 +280,18 @@ export default function IntegrationCenter() {
                 <Typography color="text.secondary" paragraph>
                   {integration.description}
                 </Typography>
-                <Chip 
+                <Chip
                   label={integration.category}
                   size="small"
                   sx={{ mr: 1 }}
                 />
+                {integration.popular && (
+                  <Chip
+                    label="Popular"
+                    size="small"
+                    color="primary"
+                  />
+                )}
               </CardContent>
               <CardActions>
                 {connectedApps.includes(integration.id) ? (
@@ -260,16 +310,12 @@ export default function IntegrationCenter() {
                     >
                       Disconnect
                     </Button>
-                    <Tooltip title="Connected">
-                      <CheckIcon color="success" sx={{ ml: 'auto' }} />
-                    </Tooltip>
                   </>
                 ) : (
                   <Button
                     size="small"
-                    startIcon={<AddIcon />}
+                    startIcon={<LinkIcon />}
                     onClick={() => handleConnect(integration)}
-                    variant="contained"
                   >
                     Connect
                   </Button>
@@ -280,48 +326,121 @@ export default function IntegrationCenter() {
         ))}
       </Grid>
 
+      {/* Configuration Dialog */}
       <Dialog open={configOpen} onClose={() => setConfigOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
           Configure {selectedIntegration?.name}
         </DialogTitle>
         <DialogContent>
-          {connecting ? (
-            <Box sx={{ my: 4 }}>
-              <Typography align="center" gutterBottom>
-                Connecting to {selectedIntegration?.name}...
-              </Typography>
-              <LinearProgress />
-            </Box>
-          ) : (
-            <Box sx={{ mt: 2 }}>
-              <TextField
-                label="API Key"
-                fullWidth
-                type="password"
-                sx={{ mb: 2 }}
-              />
-              <TextField
-                label="Workspace ID"
-                fullWidth
-                sx={{ mb: 2 }}
-              />
-              <Alert severity="info" sx={{ mb: 2 }}>
-                You can find these details in your {selectedIntegration?.name} dashboard settings.
+          <Box sx={{ mt: 2 }}>
+            {selectedIntegration?.isCustom ? (
+              <>
+                <TextField
+                  fullWidth
+                  label="API Endpoint"
+                  value={selectedIntegration?.apiEndpoint || ''}
+                  margin="normal"
+                />
+                <TextField
+                  fullWidth
+                  label="API Key"
+                  type="password"
+                  value={selectedIntegration?.apiKey || ''}
+                  margin="normal"
+                />
+                <TextField
+                  fullWidth
+                  label="Webhook URL"
+                  value={selectedIntegration?.webhookUrl || ''}
+                  margin="normal"
+                />
+              </>
+            ) : (
+              <Alert severity="info">
+                You'll be redirected to {selectedIntegration?.name} to complete the integration setup.
               </Alert>
-            </Box>
-          )}
+            )}
+            {connecting && <LinearProgress sx={{ mt: 2 }} />}
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfigOpen(false)} disabled={connecting}>
-            Cancel
-          </Button>
+          <Button onClick={() => setConfigOpen(false)}>Cancel</Button>
           <Button
             onClick={handleConfigSubmit}
             variant="contained"
             disabled={connecting}
-            startIcon={<CloudSyncIcon />}
           >
             {connecting ? 'Connecting...' : 'Connect'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Custom Integration Dialog */}
+      <Dialog open={addCustomOpen} onClose={() => setAddCustomOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add Custom Integration</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Integration Name"
+              value={customIntegration.name}
+              onChange={handleCustomChange('name')}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Description"
+              value={customIntegration.description}
+              onChange={handleCustomChange('description')}
+              fullWidth
+              multiline
+              rows={2}
+            />
+            <TextField
+              label="Category"
+              value={customIntegration.category}
+              onChange={handleCustomChange('category')}
+              fullWidth
+            />
+            <TextField
+              label="API Endpoint"
+              value={customIntegration.apiEndpoint}
+              onChange={handleCustomChange('apiEndpoint')}
+              fullWidth
+              required
+              helperText="The base URL for your API"
+            />
+            <TextField
+              label="API Key"
+              value={customIntegration.apiKey}
+              onChange={handleCustomChange('apiKey')}
+              fullWidth
+              type="password"
+              helperText="Your API authentication key"
+            />
+            <TextField
+              label="Webhook URL"
+              value={customIntegration.webhookUrl}
+              onChange={handleCustomChange('webhookUrl')}
+              fullWidth
+              helperText="URL for receiving webhooks (optional)"
+            />
+            <TextField
+              label="Icon Emoji"
+              value={customIntegration.icon}
+              onChange={handleCustomChange('icon')}
+              fullWidth
+              helperText="Enter an emoji to represent your integration"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddCustomOpen(false)}>Cancel</Button>
+          <Button
+            onClick={handleAddCustom}
+            variant="contained"
+            disabled={!customIntegration.name || !customIntegration.apiEndpoint}
+          >
+            Add Integration
           </Button>
         </DialogActions>
       </Dialog>
