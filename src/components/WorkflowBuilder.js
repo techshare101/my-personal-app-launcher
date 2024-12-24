@@ -17,7 +17,7 @@ import { Box, Button, TextField, Typography, Paper } from '@mui/material';
 import { useWorkflows } from '../hooks/useWorkflows';
 import SortableAppItem from './SortableAppItem';
 
-export default function WorkflowBuilder({ apps }) {
+export default function WorkflowBuilder({ apps, currentUser }) {
   const [workflowName, setWorkflowName] = useState('');
   const [selectedApps, setSelectedApps] = useState([]);
   const { saveWorkflow } = useWorkflows();
@@ -52,6 +52,13 @@ export default function WorkflowBuilder({ apps }) {
   };
 
   const handleSaveWorkflow = async () => {
+    console.log('Current user:', currentUser);
+    console.log('Attempting to save workflow:', {
+      name: workflowName,
+      apps: selectedApps,
+      order: selectedApps.map(app => app.id)
+    });
+    
     if (!workflowName.trim()) {
       alert('Please enter a workflow name');
       return;

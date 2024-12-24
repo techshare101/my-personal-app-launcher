@@ -10,40 +10,59 @@ class ChatService {
   }
 
   initialize() {
-    // Get the API key from environment variables
-    const apiKey = process.env.REACT_APP_GEMINI_KEY || 
-                  process.env.REACT_APP_GEMINI_API_KEY || 
-                  process.env.GEMINI_API_KEY;
-    
-    if (!apiKey) {
-      console.error('Gemini API key not found in environment variables');
-      return;
-    }
+    try {
+      // Get the API key from environment variables
+      const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+      console.log('API Key status:', apiKey ? 'Found' : 'Not found');
+      
+      if (!apiKey) {
+        throw new Error('Gemini API key not found in environment variables');
+      }
 
-    // Initialize Gemini with your API key
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    
-    // For most chat applications, we recommend using the chat-bison-001 model
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
-    
-    // Start a new chat
-    this.chat = this.model.startChat({
-      history: [],
-      generationConfig: {
-        maxOutputTokens: 1000,
-        temperature: 0.7,
-        topP: 0.8,
-        topK: 40,
-      },
-    });
+      // Initialize Gemini with your API key
+      this.genAI = new GoogleGenerativeAI(apiKey);
+      console.log('Initialized GenAI');
+      
+      // Initialize the model
+      this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+      console.log('Model initialized');
+      
+      // Start a new chat
+      this.chat = this.model.startChat({
+        history: [],
+        generationConfig: {
+          maxOutputTokens: 1000,
+          temperature: 0.7,
+          topP: 0.8,
+          topK: 40,
+        },
+      });
+      console.log('Chat initialized successfully');
+    } catch (error) {
+      console.error('Error initializing chat service:', error);
+      this.genAI = null;
+      this.model = null;
+      this.chat = null;
+    }
   }
 
   async sendMessage(message) {
     try {
       if (!this.chat) {
+        console.log('Chat not initialized, attempting to initialize...');
         this.initialize();
+        
+        if (!this.chat) {
+          throw new Error('Chat service is not initialized. Please make sure your REACT_APP_GEMINI_API_KEY is set in the .env file.');
+        }
       }
 
+      if (!message || typeof message !== 'string') {
+        throw new Error('Invalid message format');
+      }
+
+      console.log('Sending message:', message);
+      
       // Store user message in context
       this.context.push({ role: 'user', content: message });
 
@@ -62,17 +81,19 @@ Please provide a helpful response while considering:
 Response:`;
 
       // Get the response from Gemini
+      console.log('Sending prompt to Gemini...');
       const result = await this.chat.sendMessage(prompt);
       const response = await result.response;
       const text = response.text();
+      console.log('Received response from Gemini');
 
       // Store assistant response in context
       this.context.push({ role: 'assistant', content: text });
 
       return text;
     } catch (error) {
-      console.error('Error sending message to Gemini:', error);
-      return "I apologize, but I'm having trouble connecting to the AI service at the moment. Please try again later.";
+      console.error('Error in chat service:', error);
+      return "I apologize, but I'm having trouble connecting to the AI service at the moment. Please check the console for more details and try again later.";
     }
   }
 

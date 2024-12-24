@@ -28,18 +28,61 @@ import { getAppIcon } from '../utils/appIcons';
 import { useFirestore } from '../hooks/useFirestore';
 import { useLayout, LAYOUT_TYPES } from '../contexts/LayoutContext';
 import LayoutSwitcher from './LayoutSwitcher';
+import { analyticsService } from '../services/analyticsService';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function AppList({ apps, onAddClick, onDeleteApp }) {
   const [loadingImages, setLoadingImages] = useState({});
   const { isOnline } = useFirestore();
   const { layoutType, columnCount } = useLayout();
+  const { currentUser } = useAuth();
+  const [activeSession, setActiveSession] = useState(null);
 
-  const handleLaunchApp = (app) => {
+  const handleLaunchApp = async (app) => {
     if (!isOnline && !app.offlineCapable) {
       alert('This app requires an internet connection');
       return;
     }
-    window.open(app.url, '_blank');
+
+    try {
+      // Validate URL
+      let url = app.url;
+      if (!url) {
+        throw new Error('App URL is missing');
+      }
+
+      // Add protocol if missing
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+
+      // Start tracking session
+      if (currentUser) {
+        const sessionId = await analyticsService.trackAppLaunch(currentUser.uid, app.id, app);
+        setActiveSession({ id: sessionId, startTime: Date.now() });
+      }
+
+      // Launch the app
+      const newWindow = window.open(url, '_blank');
+      if (newWindow === null) {
+        throw new Error('Pop-up was blocked. Please allow pop-ups for this site.');
+      }
+
+      // Set up a visibility change listener to track when user switches back
+      const handleVisibilityChange = () => {
+        if (document.hidden && activeSession) {
+          const duration = (Date.now() - activeSession.startTime) / 1000 / 60; // Convert to minutes
+          analyticsService.trackAppClose(currentUser.uid, activeSession.id, duration);
+          setActiveSession(null);
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    } catch (error) {
+      console.error('Error launching app:', error);
+      alert(error.message || 'Failed to launch the app. Please check the URL and try again.');
+    }
   };
 
   const handleImageLoad = (appId) => {

@@ -351,6 +351,23 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
     return matches[0] || 'utilities';
   };
 
+  const validateUrl = (url) => {
+    if (!url) return false;
+    
+    // Add protocol if missing
+    let testUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      testUrl = 'https://' + url;
+    }
+    
+    try {
+      new URL(testUrl);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setAppData(prev => ({
@@ -384,17 +401,27 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!appData.name.trim() || !appData.url.trim() || !appData.category.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
+      if (!validateUrl(appData.url)) {
+        throw new Error('Please enter a valid URL');
+      }
+
+      // Format URL
+      let url = appData.url;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+
       // First, search for the app's website
       const webData = await fetchGoogleSearch(appData.name, 'web');
-      const url = findOfficialUrl(webData, appData.name) || 
-                 `https://www.google.com/search?q=${encodeURIComponent(appData.name + ' download')}`;
+      const officialUrl = findOfficialUrl(webData, appData.name) || url;
 
       // Then search for the app's icon
       const imageData = await fetchGoogleSearch(appData.name, 'image');
@@ -411,7 +438,7 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
         name: appData.name,
         thumbnail,
         description,
-        url,
+        url: officialUrl,
         category
       });
 
@@ -419,7 +446,7 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
         name: appData.name,
         thumbnail,
         description,
-        url,
+        url: officialUrl,
         category
       });
 

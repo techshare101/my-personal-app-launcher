@@ -127,6 +127,29 @@ class CacheService {
     const result = await store.get('userSettings');
     return result ? result.value : null;
   }
+
+  async cacheUsageData(usageData) {
+    try {
+      const store = await this.getStore(STORES.CACHE, 'readwrite');
+      await store.put({
+        url: `usage-${usageData.sessionId}`,
+        data: usageData,
+        timestamp: new Date().getTime()
+      });
+      return true;
+    } catch (error) {
+      console.error('Error caching usage data:', error);
+      return false;
+    }
+  }
+
+  async getStore(storeName, mode = 'readonly') {
+    if (!this.db) {
+      await this.initDB();
+    }
+    const transaction = this.db.transaction(storeName, mode);
+    return transaction.objectStore(storeName);
+  }
 }
 
 export const cacheService = new CacheService();

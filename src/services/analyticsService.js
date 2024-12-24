@@ -1,6 +1,5 @@
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { cacheService } from './cacheService';
 
 class AnalyticsService {
   constructor() {
@@ -22,10 +21,6 @@ class AnalyticsService {
 
       // Store in Firestore
       const docRef = await addDoc(collection(db, this.usageCollection), usageData);
-
-      // Cache locally
-      await cacheService.cacheUsageData(usageData);
-
       return docRef.id;
     } catch (error) {
       console.error('Error tracking app launch:', error);

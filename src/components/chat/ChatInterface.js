@@ -31,6 +31,41 @@ import {
 import { styled } from '@mui/material/styles';
 import { chatService } from '../../services/chatService';
 
+// Styled components using MUI's styled API
+const MessageContainer = styled(Box, {
+  shouldForwardProp: prop => prop !== 'isUser'
+})(({ theme, isUser }) => ({
+  display: 'flex',
+  alignItems: 'flex-start',
+  marginBottom: theme.spacing(0.5),
+  padding: theme.spacing(0.5, 1),
+  flexDirection: isUser ? 'row-reverse' : 'row',
+}));
+
+const MessageBubbleStyled = styled(Paper, {
+  shouldForwardProp: prop => prop !== 'isUser'
+})(({ theme, isUser }) => ({
+  padding: theme.spacing(1),
+  maxWidth: '75%',
+  borderRadius: theme.spacing(1.5),
+  background: isUser 
+    ? 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)'
+    : theme.palette.mode === 'dark'
+      ? 'linear-gradient(135deg, #424242 0%, #303030 100%)'
+      : 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)',
+  color: isUser ? '#fff' : theme.palette.text.primary,
+  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
+}));
+
+const QuickReplyChip = styled(Chip)(({ theme }) => ({
+  margin: theme.spacing(0.5),
+  background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
+  color: '#fff',
+  '&:hover': {
+    background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+  },
+}));
+
 const StyledPaper = styled(Paper)(({ theme }) => ({
   position: 'fixed',
   bottom: theme.spacing(2),
@@ -60,43 +95,13 @@ const ChatHeader = styled(Box)(({ theme }) => ({
   color: '#fff',
 }));
 
-const ChatMessage = styled(Box)(({ theme, isUser }) => ({
-  display: 'flex',
-  alignItems: 'flex-start',
-  marginBottom: theme.spacing(0.5),
-  padding: theme.spacing(0.5, 1),
-  flexDirection: isUser ? 'row-reverse' : 'row',
-}));
-
-const MessageBubble = styled(Paper)(({ theme, isUser }) => ({
-  padding: theme.spacing(1),
-  maxWidth: '75%',
-  borderRadius: theme.spacing(1.5),
-  background: isUser 
-    ? 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)'
-    : theme.palette.mode === 'dark'
-      ? 'linear-gradient(135deg, #424242 0%, #303030 100%)'
-      : 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)',
-  color: isUser ? '#fff' : theme.palette.text.primary,
-  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
-}));
-
-const QuickReplyChip = styled(Chip)(({ theme }) => ({
-  margin: theme.spacing(0.5),
-  background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-  color: '#fff',
-  '&:hover': {
-    background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-  },
-}));
-
 const suggestions = [
   { label: 'Recommend an app', icon: <AppsIcon /> },
   { label: 'Create workflow', icon: <AutoAwesomeIcon /> },
   { label: 'Productivity tips', icon: <LightbulbIcon /> },
 ];
 
-export default function ChatInterface() {
+const ChatInterface = () => {
   const theme = useTheme();
   const [isExpanded, setIsExpanded] = useState(true);
   const [message, setMessage] = useState('');
@@ -107,11 +112,20 @@ export default function ChatInterface() {
   const inputRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      try {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      } catch (error) {
+        console.error('Error scrolling to bottom:', error);
+      }
+    }
   };
 
   useEffect(() => {
-    scrollToBottom();
+    const timer = setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    return () => clearTimeout(timer);
   }, [messages]);
 
   const handleSend = async () => {
@@ -139,6 +153,17 @@ export default function ChatInterface() {
       }]);
     } catch (error) {
       console.error('Error sending message:', error);
+      const errorMessage = error.message.includes('REACT_APP_GEMINI_API_KEY') 
+        ? 'The chatbot is not configured properly. Please make sure you have set up your Gemini API key.'
+        : 'Sorry, I encountered an error. Please try again.';
+      
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        text: errorMessage,
+        isUser: false,
+        timestamp: new Date(),
+        isError: true,
+      }]);
     } finally {
       setIsTyping(false);
     }
@@ -193,7 +218,7 @@ export default function ChatInterface() {
         >
           {messages.map((msg) => (
             <Zoom in key={msg.id} style={{ transitionDelay: '50ms' }}>
-              <ChatMessage isUser={msg.isUser}>
+              <MessageContainer isUser={msg.isUser}>
                 <Avatar
                   sx={{ 
                     width: 24,
@@ -205,28 +230,28 @@ export default function ChatInterface() {
                 >
                   {msg.isUser ? 'U' : 'A'}
                 </Avatar>
-                <MessageBubble isUser={msg.isUser} variant="outlined">
-                  <Typography variant="body2">{msg.text}</Typography>
-                </MessageBubble>
-              </ChatMessage>
+                <MessageBubbleStyled isUser={msg.isUser}>
+                  <Typography variant="body2" sx={{ color: msg.isError ? 'error.main' : 'inherit' }}>{msg.text}</Typography>
+                </MessageBubbleStyled>
+              </MessageContainer>
             </Zoom>
           ))}
           {isTyping && (
             <Fade in>
-              <ChatMessage>
+              <MessageContainer>
                 <Avatar sx={{ width: 24, height: 24, mx: 0.5, bgcolor: 'secondary.main', fontSize: '0.75rem' }}>
                   A
                 </Avatar>
-                <MessageBubble variant="outlined">
+                <MessageBubbleStyled>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <CircularProgress size={16} />
                     <Typography variant="body2">Thinking...</Typography>
                   </Box>
-                </MessageBubble>
-              </ChatMessage>
+                </MessageBubbleStyled>
+              </MessageContainer>
             </Fade>
           )}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} style={{ height: 1 }} />
         </Box>
 
         {showSuggestions && (
@@ -277,4 +302,6 @@ export default function ChatInterface() {
       </Collapse>
     </StyledPaper>
   );
-}
+};
+
+export default ChatInterface;
