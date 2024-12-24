@@ -20,9 +20,13 @@ import {
   Typography,
   Alert,
   Snackbar,
+  Card,
+  CardMedia,
+  CardContent
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import SearchIcon from '@mui/icons-material/Search';
 
 const categories = [
   'productivity',
@@ -141,18 +145,10 @@ const FALLBACK_DATA = {
 };
 
 const AddAppDialog = ({ open, onClose, onAdd }) => {
-  const [appData, setAppData] = useState({
-    name: '',
-    description: '',
-    url: '',
-    category: '',
-    thumbnail: '',
-    tags: [],
-    offlineCapable: false
-  });
-  const [newTag, setNewTag] = useState('');
+  const [appName, setAppName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchResults, setSearchResults] = useState(null);
 
   const fetchGoogleSearch = async (query, searchType = 'web') => {
     try {
@@ -368,235 +364,160 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setAppData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSwitchChange = (e) => {
-    const { name, checked } = e.target;
-    setAppData(prev => ({
-      ...prev,
-      [name]: checked
-    }));
-  };
-
-  const handleAddTag = () => {
-    if (newTag.trim() && !appData.tags.includes(newTag.trim())) {
-      setAppData(prev => ({
-        ...prev,
-        tags: [...prev.tags, newTag.trim()]
-      }));
-      setNewTag('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove) => {
-    setAppData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!appData.name.trim() || !appData.url.trim() || !appData.category.trim()) return;
-
+  const handleSearch = async () => {
+    if (!appName.trim()) return;
+    
     setLoading(true);
     setError(null);
 
     try {
-      if (!validateUrl(appData.url)) {
-        throw new Error('Please enter a valid URL');
-      }
+      // Search for app info
+      const webData = await fetchGoogleSearch(appName, 'web');
+      const imageData = await fetchGoogleSearch(appName, 'image');
+      
+      const url = findOfficialUrl(webData, appName);
+      const description = webData.items?.[0]?.snippet || `${appName} application`;
+      const thumbnail = findBestImage(imageData, appName);
+      const category = suggestCategory(appName, description);
 
-      // Format URL
-      let url = appData.url;
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = 'https://' + url;
-      }
-
-      // First, search for the app's website
-      const webData = await fetchGoogleSearch(appData.name, 'web');
-      const officialUrl = findOfficialUrl(webData, appData.name) || url;
-
-      // Then search for the app's icon
-      const imageData = await fetchGoogleSearch(appData.name, 'image');
-      const thumbnail = findBestImage(imageData, appData.name) || 
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(appData.name)}&size=512&background=random&color=fff&bold=true&format=svg`;
-
-      // Get the best description
-      const description = webData.items?.[0]?.snippet || `${appData.name} application`;
-
-      // Suggest a category based on the app name and description
-      const category = suggestCategory(appData.name, description);
-
-      console.log('Adding app with:', { 
-        name: appData.name,
-        thumbnail,
-        description,
-        url: officialUrl,
-        category
-      });
-
-      onAdd({
-        name: appData.name,
-        thumbnail,
-        description,
-        url: officialUrl,
-        category
-      });
-
-      setAppData({
-        name: '',
-        description: '',
-        url: '',
-        category: '',
-        thumbnail: '',
+      setSearchResults({
+        name: appName,
+        url: url || `https://www.google.com/search?q=${encodeURIComponent(appName)}`,
+        description: description,
+        thumbnail: thumbnail || '',
+        category: category,
         tags: [],
-        offlineCapable: false
+        offlineCapable: false,
+        addedAt: new Date().toISOString(),
       });
-    } catch (err) {
-      console.error('Error fetching app data:', err);
-      setError(err.message || 'Failed to fetch app information. Please try again.');
+    } catch (error) {
+      console.error('Error searching app:', error);
+      setError('Failed to find app information. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const isValid = appData.name && appData.url && appData.category;
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const handleAdd = async () => {
+    if (!searchResults) return;
+    await onAdd(searchResults);
+    handleClose();
+  };
+
+  const handleClose = () => {
+    setAppName('');
+    setSearchResults(null);
+    setError(null);
+    onClose();
+  };
 
   return (
-    <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New App</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <TextField
-              name="name"
-              label="App Name"
-              value={appData.name}
-              onChange={handleChange}
-              fullWidth
-              required
-            />
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        Add New App
+        <IconButton
+          aria-label="close"
+          onClick={handleClose}
+          sx={{ position: 'absolute', right: 8, top: 8 }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        
+        <Box sx={{ mt: 2 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            label="App Name"
+            value={appName}
+            onChange={(e) => setAppName(e.target.value)}
+            onKeyPress={handleKeyPress}
+            disabled={loading}
+            placeholder="Enter app name (e.g., Slack, VS Code)"
+            InputProps={{
+              endAdornment: loading && (
+                <InputAdornment position="end">
+                  <CircularProgress size={20} />
+                </InputAdornment>
+              ),
+            }}
+          />
+          
+          {!searchResults && !loading && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              Press Enter or click Search to find app information automatically
+            </Typography>
+          )}
 
-            <TextField
-              name="description"
-              label="Description"
-              value={appData.description}
-              onChange={handleChange}
-              fullWidth
-              multiline
-              rows={2}
-            />
-
-            <TextField
-              name="url"
-              label="App URL"
-              value={appData.url}
-              onChange={handleChange}
-              fullWidth
-              required
-              type="url"
-            />
-
-            <FormControl fullWidth required>
-              <InputLabel>Category</InputLabel>
-              <Select
-                name="category"
-                value={appData.category}
-                onChange={handleChange}
-                label="Category"
-              >
-                {CATEGORIES.map((category) => (
-                  <MenuItem key={category} value={category.toLowerCase()}>
-                    {category}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              name="thumbnail"
-              label="Thumbnail URL"
-              value={appData.thumbnail}
-              onChange={handleChange}
-              fullWidth
-              type="url"
-            />
-
-            <Box>
-              <TextField
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                label="Add Tags"
-                size="small"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={handleAddTag} edge="end">
-                        <AddIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddTag();
-                  }
-                }}
-              />
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                {appData.tags.map((tag) => (
-                  <Chip
-                    key={tag}
-                    label={tag}
-                    onDelete={() => handleRemoveTag(tag)}
-                    size="small"
-                  />
-                ))}
-              </Box>
-            </Box>
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={appData.offlineCapable}
-                  onChange={handleSwitchChange}
-                  name="offlineCapable"
+          {searchResults && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                App Preview
+              </Typography>
+              
+              <Card sx={{ mb: 2 }}>
+                <CardMedia
+                  component="img"
+                  height="140"
+                  image={searchResults.thumbnail || '/placeholder-app.png'}
+                  alt={searchResults.name}
+                  sx={{ objectFit: 'contain', bgcolor: 'background.default' }}
                 />
-              }
-              label="Available Offline"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    {searchResults.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" paragraph>
+                    {searchResults.description}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Category:</strong> {searchResults.category}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>URL:</strong> {searchResults.url}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Box>
+          )}
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        {!searchResults ? (
           <Button
-            onClick={handleSubmit}
+            onClick={handleSearch}
             variant="contained"
-            disabled={!isValid || loading}
+            disabled={!appName.trim() || loading}
+            startIcon={<SearchIcon />}
           >
-            {loading ? <CircularProgress size={24} /> : 'Add App'}
+            Search
           </Button>
-        </DialogActions>
-      </Dialog>
-      <Snackbar 
-        open={!!error} 
-        autoHideDuration={6000} 
-        onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={() => setError(null)} severity="error">
-          {error}
-        </Alert>
-      </Snackbar>
-    </>
+        ) : (
+          <>
+            <Button onClick={handleClose}>Cancel</Button>
+            <Button
+              onClick={handleAdd}
+              variant="contained"
+              startIcon={<AddIcon />}
+            >
+              Add App
+            </Button>
+          </>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 };
 

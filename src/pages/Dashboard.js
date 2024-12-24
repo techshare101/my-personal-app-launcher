@@ -185,7 +185,7 @@ export default function Dashboard() {
       <AddAppDialog
         open={openAddDialog}
         onClose={handleCloseDialog}
-        onSave={handleSaveApp}
+        onAdd={handleSaveApp}
       />
     </Container>
   );

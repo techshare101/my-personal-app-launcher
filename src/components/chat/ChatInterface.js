@@ -108,8 +108,109 @@ const ChatInterface = () => {
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize speech recognition
+    if ('webkitSpeechRecognition' in window) {
+      const SpeechRecognition = window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setMessage(prev => prev + transcript);
+        stopListening();
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        stopListening();
+      };
+
+      recognitionRef.current.onend = () => {
+        stopListening();
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const startListening = async () => {
+    try {
+      // First, check if we have microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Stop the stream immediately as we only needed it for permission
+      stream.getTracks().forEach(track => track.stop());
+
+      // Now initialize speech recognition
+      if (!recognitionRef.current && 'webkitSpeechRecognition' in window) {
+        const SpeechRecognition = window.webkitSpeechRecognition;
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+
+        recognitionRef.current.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          setMessage(prev => prev + transcript);
+          stopListening();
+        };
+
+        recognitionRef.current.onerror = (event) => {
+          console.error('Speech recognition error:', event.error);
+          stopListening();
+        };
+
+        recognitionRef.current.onend = () => {
+          stopListening();
+        };
+      }
+
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } else {
+        throw new Error('Speech recognition is not supported');
+      }
+    } catch (error) {
+      console.error('Error starting speech recognition:', error);
+      if (error.name === 'NotAllowedError') {
+        alert('Please allow microphone access to use voice input.');
+      } else if (error.name === 'NotFoundError') {
+        alert('No microphone found. Please check your microphone connection.');
+      } else {
+        alert('Speech recognition is not supported in your browser or an error occurred.');
+      }
+      setIsListening(false);
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.error('Error stopping speech recognition:', error);
+      }
+    }
+    setIsListening(false);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToBottom();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [messages]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -120,13 +221,6 @@ const ChatInterface = () => {
       }
     }
   };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      scrollToBottom();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [messages]);
 
   const handleSend = async () => {
     if (!message.trim()) return;
@@ -273,26 +367,26 @@ const ChatInterface = () => {
         <Box sx={{ p: 1, borderTop: 1, borderColor: 'divider' }}>
           <TextField
             fullWidth
-            size="small"
-            variant="outlined"
-            placeholder="Ask me anything..."
+            multiline
+            maxRows={4}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
             inputRef={inputRef}
             InputProps={{
               endAdornment: (
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
-                  <IconButton size="small">
-                    <MicIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                  <IconButton 
-                    size="small"
-                    color="primary"
-                    onClick={handleSend}
-                    disabled={!message.trim()}
-                  >
-                    <SendIcon sx={{ fontSize: 18 }} />
+                  <Tooltip title={isListening ? "Stop recording" : "Start voice input"}>
+                    <IconButton
+                      onClick={isListening ? stopListening : startListening}
+                      color={isListening ? "error" : "default"}
+                    >
+                      <MicIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <IconButton onClick={handleSend} disabled={!message.trim()}>
+                    <SendIcon />
                   </IconButton>
                 </Box>
               ),
