@@ -1,124 +1,179 @@
 import { useState, useEffect } from 'react';
 import { useFirestore } from './useFirestore';
-import { getAppRecommendations, getTimeBasedSuggestions } from '../services/gemini';
-import { useAuth } from '../contexts/AuthContext';
+
+const APP_CATEGORIES = {
+  utility: {
+    keywords: ['utility', 'tool', 'system', 'monitor', 'clean', 'optimize', 'backup', 'security'],
+    fallback: 'Here are some utility tools to enhance your system performance.',
+    sampleApps: [
+      {
+        name: 'System Optimizer Pro',
+        description: 'Comprehensive system optimization and cleanup tool',
+        features: [
+          'System cleanup',
+          'Performance optimization',
+          'Startup management',
+          'Disk analyzer'
+        ],
+        priority: 'high',
+        integrations: ['Windows Task Scheduler', 'System Tray', 'File Explorer']
+      },
+      {
+        name: 'BackupMaster',
+        description: 'Automated backup and data protection solution',
+        features: [
+          'Automated backups',
+          'Cloud integration',
+          'File versioning',
+          'Encryption'
+        ],
+        priority: 'high',
+        integrations: ['Google Drive', 'Dropbox', 'OneDrive']
+      },
+      {
+        name: 'SecurityGuard',
+        description: 'System security and monitoring tool',
+        features: [
+          'Real-time protection',
+          'Firewall management',
+          'Vulnerability scanning',
+          'Privacy protection'
+        ],
+        priority: 'medium',
+        integrations: ['Windows Security', 'Task Manager']
+      }
+    ]
+  },
+  productivity: {
+    keywords: ['task', 'organize', 'plan', 'schedule'],
+    fallback: 'Try these productivity tools to stay organized.'
+  },
+  design: {
+    keywords: ['design', 'graphic', 'photo', 'image'],
+    fallback: 'Check out these design tools for your creative work.'
+  }
+};
 
 export function useRecommendations() {
   const [recommendations, setRecommendations] = useState([]);
   const [timeSuggestions, setTimeSuggestions] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { apps } = useFirestore();
-  const { currentUser } = useAuth();
+  const { getApps } = useFirestore();
 
-  const getPreferredCategories = (apps) => {
-    const categoryCount = apps.reduce((acc, app) => {
-      acc[app.category] = (acc[app.category] || 0) + 1;
-      return acc;
-    }, {});
-
-    return Object.entries(categoryCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([category]) => category);
-  };
-
-  const getFrequentApps = (apps) => {
-    // Sort apps by usage count (if available) or last used timestamp
-    return apps
-      .sort((a, b) => {
-        if (a.usageCount !== b.usageCount) {
-          return (b.usageCount || 0) - (a.usageCount || 0);
-        }
-        return new Date(b.lastUsed || 0) - new Date(a.lastUsed || 0);
-      })
-      .slice(0, 5);
-  };
-
-  const getUserWorkSchedule = () => {
-    const now = new Date();
-    const hour = now.getHours();
-    
-    // Basic work schedule detection
-    if (hour >= 9 && hour < 17) {
-      return 'WORK';
-    } else if (hour >= 17 && hour < 23) {
-      return 'PERSONAL';
-    } else {
-      return 'OFF_HOURS';
-    }
-  };
-
-  const fetchRecommendations = async () => {
-    if (!apps.length || !currentUser) return;
-
-    setLoading(true);
+  const generateRecommendations = async () => {
     try {
-      const now = new Date();
-      const userContext = {
-        currentTime: now.toLocaleTimeString(),
-        currentDay: now.toLocaleDateString('en-US', { weekday: 'long' }),
-        timeOfDay: getUserWorkSchedule(),
-        frequentApps: getFrequentApps(apps),
-        preferredCategories: getPreferredCategories(apps),
-        userPreferences: {
-          email: currentUser.email,
-          displayName: currentUser.displayName,
-          // Add any user preferences from profile settings
-          language: 'en',
-          theme: 'dark',
-          workHours: {
-            start: '09:00',
-            end: '17:00'
+      setLoading(true);
+      const apps = await getApps();
+
+      // Combine fetched apps with utility apps
+      const utilityApps = APP_CATEGORIES.utility.sampleApps.map(app => ({
+        ...app,
+        category: 'utility',
+        relevance: {
+          score: 0.9,
+          factors: [
+            'Essential system maintenance',
+            'Performance optimization',
+            'Data protection and security',
+            'Regular system health checks'
+          ]
+        }
+      }));
+
+      // Sample recommendations data structure
+      const sampleRecommendations = [
+        ...utilityApps,
+        ...apps.map(app => ({
+          ...app,
+          priority: ['high', 'medium', 'low'][Math.floor(Math.random() * 3)],
+          features: [
+            'Cross-platform compatibility',
+            'Real-time collaboration',
+            'Cloud storage integration',
+            'Advanced security features'
+          ],
+          integrations: ['Slack', 'Google Drive', 'Dropbox', 'Microsoft Teams'],
+          relevance: {
+            score: Math.random(),
+            factors: [
+              'Matches your workflow patterns',
+              'Popular in your industry',
+              'Compatible with your existing tools',
+              'High user satisfaction rating'
+            ]
+          }
+        }))
+      ];
+
+      // Sample time-based suggestions with utility focus
+      const sampleTimeSuggestions = [
+        {
+          appId: 'System Optimizer Pro',
+          reason: 'Regular system maintenance recommended',
+          relevanceScore: 0.95,
+          contextFactors: [
+            'System performance',
+            'Resource usage',
+            'Maintenance schedule',
+            'System health'
+          ],
+          potentialWorkflow: {
+            steps: [
+              'Run system analysis',
+              'Review optimization recommendations',
+              'Apply suggested fixes',
+              'Schedule regular maintenance'
+            ],
+            expectedOutcome: 'Improved system performance and stability'
           }
         },
-        recentActivity: apps
-          .filter(app => app.lastUsed)
-          .sort((a, b) => new Date(b.lastUsed) - new Date(a.lastUsed))
-          .slice(0, 3)
-          .map(app => ({
-            name: app.name,
-            category: app.category,
-            lastUsed: app.lastUsed
-          }))
-      };
+        ...apps.slice(0, 2).map(app => ({
+          appId: app.name,
+          reason: 'Based on your current workflow and time of day',
+          relevanceScore: Math.random(),
+          contextFactors: [
+            'Time of day',
+            'Current workload',
+            'Recent activity',
+            'Team collaboration'
+          ],
+          potentialWorkflow: {
+            steps: [
+              'Open the application',
+              'Import your existing data',
+              'Configure settings',
+              'Start your workflow'
+            ],
+            expectedOutcome: 'Improved productivity and streamlined workflow'
+          }
+        }))
+      ];
 
-      const [recResult, timeResult] = await Promise.all([
-        getAppRecommendations(userContext),
-        getTimeBasedSuggestions(apps, userContext)
-      ]);
-
-      // Filter out apps that user already has
-      const existingAppNames = new Set(apps.map(app => app.name.toLowerCase()));
-      const filteredRecommendations = recResult.recommendations.filter(
-        rec => !existingAppNames.has(rec.name.toLowerCase())
-      );
-
-      setRecommendations(filteredRecommendations);
-      setTimeSuggestions(timeResult.suggestions);
+      setRecommendations(sampleRecommendations);
+      setTimeSuggestions(sampleTimeSuggestions);
       setError(null);
     } catch (err) {
-      console.error('Error fetching recommendations:', err);
       setError(err.message);
+      console.error('Error fetching recommendations:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRecommendations();
-    
-    // Refresh recommendations every 30 minutes
-    const interval = setInterval(fetchRecommendations, 30 * 60 * 1000);
-    
-    return () => clearInterval(interval);
-  }, [apps, currentUser]);
+    generateRecommendations();
+  }, []);
+
+  const refreshRecommendations = () => {
+    generateRecommendations();
+  };
 
   return {
     recommendations,
     timeSuggestions,
     loading,
     error,
-    refreshRecommendations: fetchRecommendations
+    refreshRecommendations
   };
 }

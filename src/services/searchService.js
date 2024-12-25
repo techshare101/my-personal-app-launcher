@@ -3,6 +3,17 @@ import axios from 'axios';
 const GOOGLE_API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
 const GOOGLE_CSE_ID = process.env.REACT_APP_GOOGLE_CSE_ID;
 
+const CATEGORY_PATTERNS = {
+  utility: /\b(utility|tool|system|clean|monitor|optimize|backup|security)\b/,
+  productivity: /\b(document|notes?|task|project|work|office|email|calendar|meeting)\b/,
+  development: /\b(code|programming|developer|ide|git|database|web|api|terminal)\b/,
+  entertainment: /\b(game|music|video|stream|media|play|watch|listen)\b/,
+  communication: /\b(chat|message|call|meeting|voice|video|team|conference)\b/,
+  design: /\b(design|photo|image|graphic|art|draw|creative|ui|ux)\b/,
+  finance: /\b(money|finance|bank|payment|accounting|budget|invoice)\b/,
+  security: /\b(security|password|vpn|protect|encrypt|backup)\b/,
+};
+
 export const searchService = {
   async searchApp(query, searchType = 'web') {
     try {
@@ -72,23 +83,63 @@ export const searchService = {
   suggestCategory(appName, description = '') {
     const text = `${appName} ${description}`.toLowerCase();
     
-    const categoryPatterns = {
-      productivity: ['office', 'work', 'todo', 'notes', 'calendar', 'mail', 'email', 'docs'],
-      development: ['code', 'dev', 'programming', 'ide', 'editor', 'git'],
-      communication: ['chat', 'message', 'meet', 'call', 'video', 'conference'],
-      design: ['design', 'photo', 'image', 'video', 'art', 'creative'],
-      utilities: ['system', 'tool', 'utility', 'convert', 'clean', 'monitor'],
-      entertainment: ['game', 'music', 'video', 'stream', 'play'],
-      social: ['social', 'network', 'share', 'community'],
-      education: ['learn', 'study', 'course', 'education', 'teach'],
-    };
-
-    for (const [category, patterns] of Object.entries(categoryPatterns)) {
-      if (patterns.some(pattern => text.includes(pattern))) {
+    // Check each category pattern
+    for (const [category, pattern] of Object.entries(CATEGORY_PATTERNS)) {
+      if (pattern.test(text)) {
         return category;
       }
     }
 
-    return 'other';
+    // Return 'utility' as default category
+    return 'utility';
+  },
+
+  searchApps(apps, query, category) {
+    if (!apps) return [];
+    
+    const searchTerm = query.toLowerCase();
+    
+    return apps.filter(app => {
+      const matchesSearch = !searchTerm || 
+        app.name.toLowerCase().includes(searchTerm) ||
+        app.description.toLowerCase().includes(searchTerm) ||
+        (app.tags && app.tags.some(tag => tag.toLowerCase().includes(searchTerm)));
+
+      const matchesCategory = !category || 
+        category === 'all' || 
+        app.category.toLowerCase() === category.toLowerCase();
+
+      return matchesSearch && matchesCategory;
+    });
+  },
+
+  getRelevanceScore(app, query) {
+    const searchTerms = query.toLowerCase().split(' ');
+    let score = 0;
+
+    // Name match (highest weight)
+    if (searchTerms.some(term => app.name.toLowerCase().includes(term))) {
+      score += 0.5;
+    }
+
+    // Description match
+    if (searchTerms.some(term => app.description.toLowerCase().includes(term))) {
+      score += 0.3;
+    }
+
+    // Tags match
+    if (app.tags && searchTerms.some(term => 
+      app.tags.some(tag => tag.toLowerCase().includes(term))
+    )) {
+      score += 0.2;
+    }
+
+    // Category match
+    const suggestedCategory = this.suggestCategory(query);
+    if (app.category.toLowerCase() === suggestedCategory) {
+      score += 0.2;
+    }
+
+    return Math.min(score, 1);
   }
 };

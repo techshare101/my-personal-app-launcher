@@ -197,6 +197,23 @@ class AnalyticsService {
 
     return recommendations;
   }
+
+  async trackEvent(eventName, eventData) {
+    try {
+      const timestamp = new Date().toISOString();
+      const analyticsData = {
+        eventName,
+        ...eventData,
+        timestamp,
+      };
+
+      // Store in Firestore
+      await addDoc(collection(db, this.analyticsCollection), analyticsData);
+    } catch (error) {
+      console.error('Error tracking event:', error);
+      // Don't throw error to prevent breaking app functionality
+    }
+  }
 }
 
 export const analyticsService = new AnalyticsService();

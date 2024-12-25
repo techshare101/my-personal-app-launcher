@@ -34,9 +34,8 @@ export default function AppLayout() {
           >
             <MenuIcon />
           </IconButton>
-          
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            App Launcher
+            🚀 My App Launcher (Updated Dec 25)
           </Typography>
 
           {currentUser ? (

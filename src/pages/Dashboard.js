@@ -1,24 +1,23 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Container,
-  Typography,
   Box,
+  Container,
   Tab,
   Tabs,
-  CircularProgress,
+  Typography,
+  Paper,
+  Button,
   Alert,
-  Grid,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import AppList from '../components/AppList';
 import AppSearch from '../components/AppSearch';
-import AppInsights from '../components/AppInsights';
 import AddAppDialog from '../components/AddAppDialog';
-import WorkflowBuilder from '../components/WorkflowBuilder';
-import WorkflowList from '../components/WorkflowList';
+import AppInsights from '../components/AppInsights';
 import Recommendations from '../components/Recommendations';
+import WorkflowBuilder from '../components/WorkflowBuilder';
 import IntegrationCenter from '../components/IntegrationCenter';
 import { useFirestore } from '../hooks/useFirestore';
-import { analyticsService } from '../services/analyticsService';
 import { useAuth } from '../contexts/AuthContext';
 
 function TabPanel(props) {
@@ -41,18 +40,18 @@ export default function Dashboard() {
   const [selectedApp, setSelectedApp] = useState(null);
   const [tabValue, setTabValue] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const { apps, loading, error, saveApp, deleteApp } = useFirestore();
   const { currentUser } = useAuth();
 
   // Filter apps based on search query and category
   const filteredApps = useMemo(() => {
     return apps.filter(app => {
-      const matchesSearch = searchQuery === '' || 
+      const matchesSearch = !searchQuery || 
         app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.description?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesCategory = selectedCategory === '' || 
+      const matchesCategory = selectedCategory === 'all' || 
         app.category?.toLowerCase() === selectedCategory.toLowerCase();
       
       return matchesSearch && matchesCategory;
@@ -67,35 +66,30 @@ export default function Dashboard() {
     setOpenAddDialog(false);
   };
 
-  const handleSaveApp = async (appData) => {
+  const handleAddApp = async (appData) => {
     try {
-      await saveApp(appData);
-      handleCloseDialog();
-    } catch (err) {
-      console.error('Error saving app:', err);
+      // Convert the app data to the format expected by Firestore
+      const appToSave = {
+        name: appData.name,
+        description: appData.description,
+        category: 'recommended', // Default category for recommended apps
+        addedAt: new Date().toISOString(),
+        userId: currentUser?.uid,
+        status: 'active'
+      };
+
+      await saveApp(appToSave);
+      setOpenAddDialog(false);
+    } catch (error) {
+      console.error('Error adding app:', error);
     }
   };
 
   const handleDeleteApp = async (appId) => {
     try {
       await deleteApp(appId);
-    } catch (err) {
-      console.error('Error deleting app:', err);
-    }
-  };
-
-  const handleAppLaunch = async (app) => {
-    try {
-      const sessionId = await analyticsService.trackAppLaunch(currentUser.uid, app.id, app);
-      window.open(app.url, '_blank');
-      
-      // Simulate app usage time for demo purposes
-      // In a real app, you'd track actual usage time
-      setTimeout(() => {
-        analyticsService.trackAppClose(currentUser.uid, sessionId, Math.random() * 30);
-      }, 1000);
-    } catch (err) {
-      console.error('Error tracking app launch:', err);
+    } catch (error) {
+      console.error('Error deleting app:', error);
     }
   };
 
@@ -103,79 +97,76 @@ export default function Dashboard() {
     setTabValue(newValue);
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const handleAppSelect = (app) => {
+    setSelectedApp(app);
+  };
+
+  const handleAppLaunch = (app) => {
+    window.open(app.url, '_blank');
+  };
 
   if (error) {
     return (
-      <Container>
-        <Alert severity="error" sx={{ mt: 2 }}>
-          Error loading apps: {error}
-        </Alert>
-      </Container>
-    );
-  }
-
-  if (!currentUser) {
-    return (
-      <Container>
-        <Alert severity="info" sx={{ mt: 2 }}>
-          Please sign in to view your dashboard.
-        </Alert>
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Alert severity="error">Error loading apps: {error}</Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
+    <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+        >
           <Tab label="My Apps" />
           <Tab label="Workflows" />
-          <Tab label="Insights" />
           <Tab label="Recommendations" />
+          <Tab label="Insights" />
           <Tab label="Integrations" />
         </Tabs>
       </Box>
 
       <TabPanel value={tabValue} index={0}>
-        <AppSearch
-          searchQuery={searchQuery}
-          category={selectedCategory}
-          onSearchChange={setSearchQuery}
-          onCategoryChange={setSelectedCategory}
-        />
+        <Box sx={{ mb: 3 }}>
+          <AppSearch
+            onSearch={setSearchQuery}
+            onCategoryChange={setSelectedCategory}
+          />
+        </Box>
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenAddDialog(true)}
+          >
+            Add App
+          </Button>
+        </Box>
         <AppList
           apps={filteredApps}
-          onAddClick={handleAddClick}
+          loading={loading}
+          onSelect={handleAppSelect}
+          onLaunch={handleAppLaunch}
           onDeleteApp={handleDeleteApp}
-          onLaunchApp={handleAppLaunch}
-          onSelectApp={setSelectedApp}
+          onAddClick={handleAddClick}
         />
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <WorkflowBuilder apps={apps} />
-          </Grid>
-          <Grid item xs={12}>
-            <WorkflowList />
-          </Grid>
-        </Grid>
+        <WorkflowBuilder apps={apps} currentUser={currentUser} />
       </TabPanel>
 
       <TabPanel value={tabValue} index={2}>
-        <AppInsights selectedApp={selectedApp} />
+        <Recommendations onAddApp={handleAddApp} />
       </TabPanel>
 
       <TabPanel value={tabValue} index={3}>
-        <Recommendations onAddApp={handleSaveApp} />
+        <AppInsights selectedApp={selectedApp} apps={apps} />
       </TabPanel>
 
       <TabPanel value={tabValue} index={4}>
@@ -185,7 +176,7 @@ export default function Dashboard() {
       <AddAppDialog
         open={openAddDialog}
         onClose={handleCloseDialog}
-        onAdd={handleSaveApp}
+        onAdd={handleAddApp}
       />
     </Container>
   );

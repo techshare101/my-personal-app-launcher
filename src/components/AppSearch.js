@@ -12,6 +12,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
 const CATEGORIES = [
+  'All',
+  'Utility',
   'Productivity',
   'Communication',
   'Development',
@@ -48,16 +50,20 @@ export default function AppSearch({ searchQuery, category, onSearchChange, onCat
       />
       <FormControl sx={{ minWidth: 200 }}>
         <InputLabel id="category-filter-label">
-          <FilterListIcon sx={{ mr: 1 }} />
           Category
         </InputLabel>
         <Select
           labelId="category-filter-label"
+          id="category-filter"
           value={category}
           label="Category"
           onChange={(e) => onCategoryChange(e.target.value)}
+          startAdornment={
+            <InputAdornment position="start">
+              <FilterListIcon />
+            </InputAdornment>
+          }
         >
-          <MenuItem value="">All Categories</MenuItem>
           {CATEGORIES.map((cat) => (
             <MenuItem key={cat} value={cat.toLowerCase()}>
               {cat}

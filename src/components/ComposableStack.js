@@ -35,7 +35,7 @@ const categories = [
   'Language',
   'Tool',
   'Security',
-  'Testing',
+  'Testing'
 ];
 
 const technologies = [
@@ -311,54 +311,82 @@ const StyledBox = styled(Box)(({ theme }) => ({
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: '80%',
-  maxWidth: 800,
-  backgroundColor: theme.palette.background.paper,
-  boxShadow: theme.shadows[24],
-  borderRadius: theme.shape.borderRadius,
-  padding: theme.spacing(4),
+  width: '90%',
+  maxWidth: 600,
+  bgcolor: 'background.paper',
+  boxShadow: 24,
+  p: 4,
+  borderRadius: 2,
   maxHeight: '90vh',
   overflow: 'auto',
 }));
 
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    '& fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    '&:hover fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: theme.palette.primary.main,
+    },
+  },
+  '& .MuiInputBase-input': {
+    color: 'white',
+  },
+  '& .MuiInputLabel-root': {
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+}));
+
 const StyledChip = styled(Chip)(({ theme }) => ({
   margin: theme.spacing(0.5),
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
-  width: '100%',
-}));
-
-const StyledIconButton = styled(IconButton)(({ theme }) => ({
-  position: 'absolute',
-  right: theme.spacing(1),
-  top: theme.spacing(1),
+  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  color: 'white',
+  '&:hover': {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
 }));
 
 const ComposableStack = () => {
   const [selectedTech, setSelectedTech] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch] = useDebounce(searchQuery, 300);
   const [filteredTech, setFilteredTech] = useState(technologies);
+  const [newApp, setNewApp] = useState({
+    name: '',
+    description: '',
+    category: 'Frontend',
+    icon: '',
+    tags: '',
+    website: '',
+    github: '',
+  });
+  const [customTech, setCustomTech] = useState([]);
 
   useEffect(() => {
     const filterTechnologies = () => {
-      return technologies.filter(tech => {
+      const allTech = [...technologies, ...customTech];
+      return allTech.filter(tech => {
         const matchesCategory = selectedCategory === 'All' || tech.category === selectedCategory;
         const matchesSearch = !debouncedSearch || 
           tech.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
           tech.description.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-          tech.tags.some(tag => tag.toLowerCase().includes(debouncedSearch.toLowerCase()));
+          (Array.isArray(tech.tags) ? tech.tags.some(tag => tag.toLowerCase().includes(debouncedSearch.toLowerCase())) : 
+           tech.tags.toLowerCase().includes(debouncedSearch.toLowerCase()));
         
         return matchesCategory && matchesSearch;
       });
     };
 
     setFilteredTech(filterTechnologies());
-  }, [selectedCategory, debouncedSearch]);
+  }, [selectedCategory, debouncedSearch, customTech]);
 
   const handleTechClick = (tech) => {
     setSelectedTech(tech);
@@ -369,11 +397,34 @@ const ComposableStack = () => {
     setSelectedCategory(newValue);
   };
 
+  const handleAddNewApp = () => {
+    if (newApp.name && newApp.description && newApp.category) {
+      const formattedApp = {
+        ...newApp,
+        tags: newApp.tags ? newApp.tags.split(',').map(tag => tag.trim()) : [],
+        website: newApp.website || '',
+        github: newApp.github || '',
+      };
+      setCustomTech(prev => [...prev, formattedApp]);
+      setNewApp({
+        name: '',
+        description: '',
+        category: 'Frontend',
+        icon: '',
+        tags: '',
+        website: '',
+        github: '',
+      });
+      setAddModalOpen(false);
+    }
+  };
+
   return (
     <Box
       sx={{
         py: 8,
         background: 'linear-gradient(180deg, rgba(26,26,26,1) 0%, rgba(10,10,10,1) 100%)',
+        minHeight: '100vh',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -385,7 +436,7 @@ const ComposableStack = () => {
             justifyContent: 'center',
             alignItems: 'center',
             flexDirection: 'column',
-            height: '100vh',
+            width: '100%',
           }}
         >
           <Typography
@@ -403,18 +454,44 @@ const ComposableStack = () => {
             Part of your composable stack
           </Typography>
 
-          <StyledTextField
-            placeholder="Search technologies..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Box sx={{ display: 'flex', gap: 2, width: '100%', maxWidth: 600, mb: 4 }}>
+            <form 
+              style={{ display: 'flex', gap: '8px', width: '100%' }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                // Search is handled automatically by the useEffect
+              }}
+            >
+              <StyledTextField
+                fullWidth
+                placeholder="Search technologies..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <Button
+                variant="contained"
+                onClick={() => setAddModalOpen(true)}
+                type="button"
+                sx={{
+                  background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
+                  color: 'white',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #FF8F8F, #b23dc6)',
+                  },
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Add New
+              </Button>
+            </form>
+          </Box>
 
           <Box sx={{ width: '100%', mb: 4 }}>
             <Tabs
@@ -456,34 +533,55 @@ const ComposableStack = () => {
                 No technologies found matching your search.
               </Typography>
             ) : (
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
-                {filteredTech.map((tech, index) => (
-                  <Box key={tech.name} sx={{ mb: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <Box>
-                        <Typography variant="h6" component="h3">
-                          {tech.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {tech.description}
-                        </Typography>
-                        <Box sx={{ mt: 1 }}>
-                          {tech.tags.map(tag => (
-                            <StyledChip
-                              key={tag}
-                              label={tag}
-                              size="small"
-                              variant="outlined"
-                            />
-                          ))}
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3 }}>
+                {filteredTech.map((tech) => (
+                  <Box
+                    key={tech.name}
+                    sx={{
+                      p: 3,
+                      bgcolor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 2,
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                      },
+                    }}
+                  >
+                    <Stack spacing={2}>
+                      <Stack direction="row" spacing={2} alignItems="center">
+                        {tech.icon && (
+                          <Box
+                            component="img"
+                            src={tech.icon}
+                            alt={tech.name}
+                            sx={{ width: 40, height: 40 }}
+                          />
+                        )}
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="h6" sx={{ color: 'white' }}>
+                            {tech.name}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                            {tech.category}
+                          </Typography>
                         </Box>
-                      </Box>
-                      <Box sx={{ ml: 'auto' }}>
-                        <Tooltip title="Launch">
-                          <IconButton onClick={() => handleTechClick(tech)}>
-                            <LaunchIcon />
-                          </IconButton>
-                        </Tooltip>
+                        <IconButton
+                          onClick={() => handleTechClick(tech)}
+                          sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                        >
+                          <LaunchIcon />
+                        </IconButton>
+                      </Stack>
+                      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                        {tech.description}
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {Array.isArray(tech.tags) ? tech.tags.map((tag) => (
+                          <StyledChip key={tag} label={tag} size="small" />
+                        )) : tech.tags.split(',').map((tag) => (
+                          <StyledChip key={tag.trim()} label={tag.trim()} size="small" />
+                        ))}
                       </Box>
                     </Stack>
                   </Box>
@@ -497,102 +595,157 @@ const ComposableStack = () => {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        closeAfterTransition
+        aria-labelledby="tech-details-modal"
       >
-        <Fade in={modalOpen}>
-          <StyledBox>
-            <StyledIconButton onClick={() => setModalOpen(false)}>
-              <CloseIcon />
-            </StyledIconButton>
-            
-            <Typography variant="h5" component="h2" gutterBottom>
-              {selectedTech && selectedTech.name}
-            </Typography>
-
-            <Stack spacing={2}>
+        <StyledBox>
+          {selectedTech && (
+            <Fade in={modalOpen}>
               <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Category
-                </Typography>
-                <StyledChip
-                  label={selectedTech && selectedTech.category}
-                  size="small"
-                  sx={{
-                    background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
-                  }}
-                />
-              </Box>
-
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Description
-                </Typography>
-                <Typography variant="body2">
-                  {selectedTech && selectedTech.description}
-                </Typography>
-              </Box>
-
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Tags
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  {selectedTech && selectedTech.tags.map((tag) => (
-                    <StyledChip
-                      key={tag}
-                      label={tag}
-                      size="small"
-                      variant="outlined"
-                    />
-                  ))}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h5">{selectedTech.name}</Typography>
+                  <IconButton onClick={() => setModalOpen(false)}>
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
+                <Stack spacing={2}>
+                  <Typography variant="body1">{selectedTech.description}</Typography>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>Category</Typography>
+                    <Chip label={selectedTech.category} />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>Tags</Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {Array.isArray(selectedTech.tags) ? selectedTech.tags.map((tag) => (
+                        <Chip key={tag} label={tag} size="small" />
+                      )) : selectedTech.tags.split(',').map((tag) => (
+                        <Chip key={tag.trim()} label={tag.trim()} size="small" />
+                      ))}
+                    </Box>
+                  </Box>
+                  <Stack direction="row" spacing={2}>
+                    {selectedTech.website && (
+                      <Button
+                        variant="outlined"
+                        startIcon={<LaunchIcon />}
+                        component={Link}
+                        href={selectedTech.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Website
+                      </Button>
+                    )}
+                    {selectedTech.github && (
+                      <Button
+                        variant="outlined"
+                        startIcon={<GitHubIcon />}
+                        component={Link}
+                        href={selectedTech.github}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        GitHub
+                      </Button>
+                    )}
+                  </Stack>
                 </Stack>
               </Box>
-
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<LaunchIcon />}
-                  component={Link}
-                  href={selectedTech && selectedTech.website}
-                  target="_blank"
-                  rel="noopener"
-                  sx={{
-                    background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
-                    '&:hover': {
-                      background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
-                      opacity: 0.9,
-                    },
-                  }}
-                >
-                  Website
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<GitHubIcon />}
-                  component={Link}
-                  href={selectedTech && selectedTech.github}
-                  target="_blank"
-                  rel="noopener"
-                >
-                  GitHub
-                </Button>
-              </Box>
-            </Stack>
-          </StyledBox>
-        </Fade>
+            </Fade>
+          )}
+        </StyledBox>
       </Modal>
 
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'radial-gradient(circle at 50% 50%, rgba(156,39,176,0.1) 0%, rgba(10,10,10,0) 70%)',
-          pointerEvents: 'none',
-        }}
-      />
+      <Modal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        aria-labelledby="add-app-modal"
+      >
+        <StyledBox>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6">Add New Application</Typography>
+            <IconButton onClick={() => setAddModalOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <Stack spacing={2}>
+            <StyledTextField
+              fullWidth
+              label="Name"
+              value={newApp.name}
+              onChange={(e) => setNewApp(prev => ({ ...prev, name: e.target.value }))}
+              required
+            />
+            <StyledTextField
+              fullWidth
+              label="Description"
+              multiline
+              rows={3}
+              value={newApp.description}
+              onChange={(e) => setNewApp(prev => ({ ...prev, description: e.target.value }))}
+              required
+            />
+            <StyledTextField
+              select
+              fullWidth
+              label="Category"
+              value={newApp.category}
+              onChange={(e) => setNewApp(prev => ({ ...prev, category: e.target.value }))}
+              required
+            >
+              {categories.filter(cat => cat !== 'All').map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </StyledTextField>
+            <StyledTextField
+              fullWidth
+              label="Icon URL"
+              value={newApp.icon}
+              onChange={(e) => setNewApp(prev => ({ ...prev, icon: e.target.value }))}
+              helperText="Enter a URL to an icon image"
+            />
+            <StyledTextField
+              fullWidth
+              label="Tags"
+              value={newApp.tags}
+              onChange={(e) => setNewApp(prev => ({ ...prev, tags: e.target.value }))}
+              helperText="Enter tags separated by commas"
+            />
+            <StyledTextField
+              fullWidth
+              label="Website URL"
+              value={newApp.website}
+              onChange={(e) => setNewApp(prev => ({ ...prev, website: e.target.value }))}
+            />
+            <StyledTextField
+              fullWidth
+              label="GitHub URL"
+              value={newApp.github}
+              onChange={(e) => setNewApp(prev => ({ ...prev, github: e.target.value }))}
+            />
+            <Button
+              variant="contained"
+              onClick={handleAddNewApp}
+              disabled={!newApp.name || !newApp.description || !newApp.category}
+              sx={{
+                background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
+                color: 'white',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #FF8F8F, #b23dc6)',
+                },
+                '&.Mui-disabled': {
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  color: 'rgba(255, 255, 255, 0.3)',
+                },
+              }}
+            >
+              Add Application
+            </Button>
+          </Stack>
+        </StyledBox>
+      </Modal>
     </Box>
   );
 };
