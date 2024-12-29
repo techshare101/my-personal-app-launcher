@@ -42,8 +42,20 @@ const requestMicrophonePermission = async () => {
       console.log('Current microphone status:', status);
       
       if (status === 'granted') {
-        permissionGranted = true;
-        return true;
+        // Verify we can actually access the microphone
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const hasAudioInput = devices.some(device => device.kind === 'audioinput');
+          if (!hasAudioInput) {
+            console.error('No audio input devices found');
+            throw new Error('No microphone devices found on your system');
+          }
+          permissionGranted = true;
+          return true;
+        } catch (deviceError) {
+          console.error('Error accessing audio devices:', deviceError);
+          throw new Error('Could not access microphone device. Please ensure a microphone is connected and enabled.');
+        }
       }
       
       // Request permission through Electron
@@ -52,6 +64,12 @@ const requestMicrophonePermission = async () => {
       console.log('Permission request result:', granted);
       
       if (granted) {
+        // Double check device access after permission granted
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasAudioInput = devices.some(device => device.kind === 'audioinput');
+        if (!hasAudioInput) {
+          throw new Error('No microphone devices found on your system');
+        }
         permissionGranted = true;
         return true;
       }
@@ -61,6 +79,13 @@ const requestMicrophonePermission = async () => {
     
     // Regular browser permission request
     console.log('Requesting permission through browser...');
+    // First check for available devices
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const hasAudioInput = devices.some(device => device.kind === 'audioinput');
+    if (!hasAudioInput) {
+      throw new Error('No microphone devices found on your system');
+    }
+    
     const stream = await navigator.mediaDevices.getUserMedia({ 
       audio: true,
       video: false 

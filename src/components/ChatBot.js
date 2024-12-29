@@ -20,17 +20,38 @@ const ChatBot = () => {
   const [messages, setMessages] = useState([]);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState(null);
+  const [microphoneStatus, setMicrophoneStatus] = useState('unchecked'); // 'unchecked', 'available', 'unavailable'
   const messagesEndRef = useRef(null);
   const { apps, workflows } = useFirestore();
 
   // Check if voice recognition is supported
-  const [voiceSupported, setVoiceSupported] = useState(true); // Set initial state to true
+  const [voiceSupported, setVoiceSupported] = useState(true);
 
   useEffect(() => {
     // Check if voice features are supported
-    const supported = isSpeechRecognitionSupported();
-    console.log('Voice recognition supported:', supported);
-    setVoiceSupported(supported);
+    const checkVoiceSupport = async () => {
+      try {
+        const supported = isSpeechRecognitionSupported();
+        console.log('Voice recognition supported:', supported);
+        setVoiceSupported(supported);
+
+        // Check for microphone devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasAudioInput = devices.some(device => device.kind === 'audioinput');
+        setMicrophoneStatus(hasAudioInput ? 'available' : 'unavailable');
+        
+        if (!hasAudioInput) {
+          setError('No microphone found. Please connect a microphone to use voice commands.');
+        }
+      } catch (err) {
+        console.error('Error checking voice support:', err);
+        setVoiceSupported(false);
+        setMicrophoneStatus('unavailable');
+        setError('Unable to access microphone. Please check your device permissions.');
+      }
+    };
+
+    checkVoiceSupport();
 
     // Add welcome message
     setMessages([{
@@ -58,9 +79,21 @@ const ChatBot = () => {
   };
 
   const toggleVoice = async () => {
-    console.log('Toggle voice called. Voice supported:', voiceSupported);
+    console.log('Toggle voice called. Voice supported:', voiceSupported, 'Microphone status:', microphoneStatus);
+    
+    // Clear any previous errors
+    setError(null);
+
     if (!voiceSupported) {
       setError('Voice recognition is not supported in your browser');
+      addMessage('Voice recognition is not supported in your browser. Please type your commands instead.', 'bot', true);
+      return;
+    }
+
+    if (microphoneStatus === 'unavailable') {
+      const errorMsg = 'No microphone found. Please connect a microphone and refresh the page to use voice commands.';
+      setError(errorMsg);
+      addMessage(errorMsg, 'bot', true);
       return;
     }
 
@@ -99,20 +132,30 @@ const ChatBot = () => {
               }
             }
           },
-          async (error) => {
+          (error) => {
             console.error('Voice recognition error:', error);
-            if (error !== 'no-speech') {
-              setError(error);
-              setIsListening(false);
-              addMessage(`Voice recognition error: ${error}`, 'bot', true);
+            setIsListening(false);
+            
+            // Handle specific error cases
+            let errorMessage = 'An error occurred with voice recognition. ';
+            if (error.message?.includes('device not found')) {
+              errorMessage = 'No microphone found. Please connect a microphone and try again.';
+              setMicrophoneStatus('unavailable');
+            } else if (error.message?.includes('permission')) {
+              errorMessage = 'Microphone access was denied. Please allow microphone access in your browser settings.';
             }
+            
+            setError(errorMessage);
+            addMessage(errorMessage, 'bot', true);
           }
         );
       }
     } catch (error) {
       console.error('Error toggling voice:', error);
-      setError('Error toggling voice recognition');
       setIsListening(false);
+      const errorMessage = 'Failed to start voice recognition. Please check your microphone connection and try again.';
+      setError(errorMessage);
+      addMessage(errorMessage, 'bot', true);
     }
   };
 
@@ -290,7 +333,7 @@ const ChatBot = () => {
             </IconButton>
             <IconButton 
               onClick={toggleVoice}
-              disabled={!voiceSupported}
+              disabled={!voiceSupported || microphoneStatus === 'unavailable'}
               size="small"
               sx={{
                 backgroundColor: isListening ? 'error.main' : 'primary.main',

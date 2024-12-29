@@ -9,6 +9,13 @@ let mainWindow;
 const requestMicrophoneAccess = async () => {
   if (process.platform === 'win32') {
     try {
+      // Check if microphone devices are available
+      const devices = await require('electron').systemPreferences.getMediaAccessStatus('microphone');
+      if (devices === 'not-determined') {
+        console.log('No microphone devices found');
+        return false;
+      }
+
       // Check if we have microphone access
       const hasAccess = systemPreferences.getMediaAccessStatus('microphone');
       console.log('Current microphone access status:', hasAccess);
@@ -17,6 +24,13 @@ const requestMicrophoneAccess = async () => {
         // Request access
         const granted = await systemPreferences.askForMediaAccess('microphone');
         console.log('Microphone access granted:', granted);
+        
+        // Double check the permission after granting
+        const finalStatus = systemPreferences.getMediaAccessStatus('microphone');
+        if (finalStatus !== 'granted') {
+          console.error('Microphone permission not properly granted:', finalStatus);
+          return false;
+        }
         return granted;
       }
       return true;
@@ -50,6 +64,13 @@ function createWindow() {
     console.log('Permission request:', { permission, url });
 
     if (permission === 'media' || permission === 'microphone') {
+      // Check if microphone is actually available
+      const micStatus = systemPreferences.getMediaAccessStatus('microphone');
+      if (micStatus === 'not-determined') {
+        console.error('No microphone devices found');
+        callback(false);
+        return;
+      }
       callback(true);
       return;
     }
