@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -9,6 +9,7 @@ import {
   Avatar,
   Menu,
   MenuItem,
+  Button,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,7 +19,9 @@ import Login from './Auth/Login';
 import SignUp from './Auth/SignUp';
 import PrivateRoute from './Auth/PrivateRoute';
 import Hero from './Hero';
-import Features from './Features';
+import Features from '../pages/Features';
+import Pricing from '../pages/Pricing';
+import Documentation from '../pages/Documentation';
 import Footer from './Footer';
 import GetStarted from '../pages/GetStarted';
 import ChatBot from './ChatBot';
@@ -27,13 +30,23 @@ import { Link as RouterLink } from 'react-router-dom';
 export default function AppLayout() {
   const { currentUser, logout } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState(null);
+  const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
+  const location = useLocation();
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
+  const handleHamburgerMenu = (event) => {
+    setMenuAnchorEl(event.currentTarget);
+  };
+
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
   };
 
   const handleLogout = async () => {
@@ -45,6 +58,8 @@ export default function AppLayout() {
     }
   };
 
+  const isOnDashboard = location.pathname === '/dashboard';
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
@@ -54,10 +69,48 @@ export default function AppLayout() {
             edge="start"
             color="inherit"
             aria-label="menu"
+            onClick={handleHamburgerMenu}
             sx={{ mr: 2 }}
           >
             <MenuIcon />
           </IconButton>
+          <Menu
+            id="menu-appbar-hamburger"
+            anchorEl={menuAnchorEl}
+            anchorOrigin={{
+              vertical: 'top',
+              horizontal: 'left',
+            }}
+            keepMounted
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'left',
+            }}
+            open={Boolean(menuAnchorEl)}
+            onClose={handleMenuClose}
+          >
+            <MenuItem 
+              component={RouterLink} 
+              to="/features" 
+              onClick={handleMenuClose}
+            >
+              Features
+            </MenuItem>
+            <MenuItem 
+              component={RouterLink} 
+              to="/pricing" 
+              onClick={handleMenuClose}
+            >
+              Pricing
+            </MenuItem>
+            <MenuItem 
+              component={RouterLink} 
+              to="/documentation" 
+              onClick={handleMenuClose}
+            >
+              Documentation
+            </MenuItem>
+          </Menu>
           
           <Typography 
             variant="h6" 
@@ -69,10 +122,10 @@ export default function AppLayout() {
               color: 'inherit' 
             }}
           >
-            App Launcher
+            Smart App Launcher
           </Typography>
 
-          {currentUser && (
+          {currentUser && isOnDashboard && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <NotificationCenter />
               <IconButton
@@ -124,11 +177,13 @@ export default function AppLayout() {
               <Dashboard />
             </PrivateRoute>
           } />
+          <Route path="/features" element={<Features />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/documentation" element={<Documentation />} />
           <Route path="/get-started" element={<GetStarted />} />
           <Route path="/" element={
             <Box>
               <Hero />
-              <Features />
               <Footer />
             </Box>
           } />

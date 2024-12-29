@@ -6,7 +6,8 @@ import {
   getDocs,
   addDoc,
   deleteDoc,
-  doc
+  doc,
+  serverTimestamp
 } from '@firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,8 +27,8 @@ export function useWorkflows() {
       }
 
       try {
-        const workflowsRef = collection(db, 'workflows');
-        const q = query(workflowsRef, where('userId', '==', currentUser.uid));
+        const workflowsRef = collection(db, 'users', currentUser.uid, 'workflows');
+        const q = query(workflowsRef);
         const querySnapshot = await getDocs(q);
         
         const workflowList = [];
@@ -49,19 +50,21 @@ export function useWorkflows() {
   }, [currentUser]);
 
   const saveWorkflow = async (workflowData) => {
+    if (!currentUser) {
+      throw new Error('User must be logged in to save workflows');
+    }
+
     try {
-      const workflowsRef = collection(db, 'workflows');
+      const workflowsRef = collection(db, 'users', currentUser.uid, 'workflows');
       const docRef = await addDoc(workflowsRef, {
         ...workflowData,
-        userId: currentUser.uid,
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
       });
       
       const newWorkflow = {
         id: docRef.id,
         ...workflowData,
-        userId: currentUser.uid,
-        createdAt: new Date().toISOString()
+        createdAt: new Date()
       };
       
       setWorkflows(prevWorkflows => [...prevWorkflows, newWorkflow]);
@@ -74,8 +77,12 @@ export function useWorkflows() {
   };
 
   const deleteWorkflow = async (workflowId) => {
+    if (!currentUser) {
+      throw new Error('User must be logged in to delete workflows');
+    }
+
     try {
-      await deleteDoc(doc(db, 'workflows', workflowId));
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'workflows', workflowId));
       setWorkflows(prevWorkflows => prevWorkflows.filter(workflow => workflow.id !== workflowId));
     } catch (err) {
       console.error('Error deleting workflow:', err);

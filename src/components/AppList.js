@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import LaunchIcon from '@mui/icons-material/Launch';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
 import CategoryFilter from './CategoryFilter';
 import SearchBar from './SearchBar';
 
@@ -88,78 +89,95 @@ const AppList = ({ apps, onAddClick, onDeleteApp }) => {
       />
       <Grid container spacing={3}>
         {/* Add App Card */}
-        <Grid item xs={12} sm={6} md={4} lg={3}>
+        <Grid item xs={12} sm={6} md={4} lg={2}>
           <Card
             sx={{
-              height: '100%',
+              height: '180px',
               display: 'flex',
               flexDirection: 'column',
               cursor: 'pointer',
               '&:hover': { backgroundColor: 'action.hover' },
+              '& .MuiCardContent-root': {
+                py: 1,
+                px: 2,
+                flex: '1 0 auto'
+              }
             }}
             onClick={onAddClick}
           >
-            <CardContent sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Typography variant="h6" component="div">
-                + Add New App
+            <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <IconButton size="large" sx={{ mb: 1 }}>
+                <AddIcon fontSize="large" />
+              </IconButton>
+              <Typography variant="subtitle1" align="center">
+                Add New App
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* App Cards */}
-        {filteredApps.map((app) => (
-          <Grid item key={app.id} xs={12} sm={6} md={4} lg={3}>
-            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <CardMedia
-                component="img"
-                sx={{
-                  height: 140,
+        {/* App Cards - Sort by creation date in descending order */}
+        {filteredApps
+          .sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0))
+          .map((app) => (
+            <Grid item xs={12} sm={6} md={4} lg={2} key={app.id}>
+              <Card sx={{ 
+                height: '180px', 
+                display: 'flex', 
+                flexDirection: 'column',
+                '& .MuiCardContent-root': {
+                  py: 1,
+                  px: 2,
+                  flex: '1 0 auto'
+                },
+                '& .MuiCardActions-root': {
+                  py: 0.5,
+                  px: 1
+                },
+                '& .MuiCardMedia-root': {
+                  height: '60px',
                   objectFit: 'contain',
-                  bgcolor: 'background.paper',
-                  p: 2
-                }}
-                image={app.thumbnail}
-                alt={app.name}
-                onError={(e) => {
-                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(app.name)}&size=512&background=random&color=fff&bold=true&format=svg`;
-                }}
-              />
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography gutterBottom variant="h6" component="div">
-                  {app.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {app.description}
-                </Typography>
-                <Box sx={{ mt: 2 }}>
-                  <Chip 
-                    label={getCategoryLabel(app.category)}
-                    size="small"
-                    color={app.category.startsWith('personal.') ? 'primary' : 'default'}
-                    variant={app.category.startsWith('personal.') ? 'filled' : 'outlined'}
-                  />
-                </Box>
-              </CardContent>
-              <CardActions>
-                <IconButton 
-                  aria-label="launch"
-                  onClick={() => handleLaunchApp(app)}
-                  color="primary"
-                >
-                  <LaunchIcon />
-                </IconButton>
-                <IconButton 
-                  aria-label="delete"
-                  onClick={() => onDeleteApp(app.id)}
-                  color="error"
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
+                  p: 1,
+                  bgcolor: 'background.paper'
+                }
+              }}>
+                <CardMedia
+                  component="img"
+                  image={app.thumbnail}
+                  alt={app.name}
+                  onError={(e) => {
+                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(app.name)}&size=512&background=random&color=fff&bold=true&format=svg`;
+                  }}
+                />
+                <CardContent>
+                  <Typography variant="subtitle2" noWrap>
+                    {app.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ 
+                    fontSize: '0.75rem',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    lineHeight: 1.2,
+                    mt: 0.5
+                  }}>
+                    {app.description}
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <IconButton size="small" onClick={() => handleLaunchApp(app)}>
+                      <LaunchIcon fontSize="small" color="primary" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => onDeleteApp(app.id)} color="error">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
       </Grid>
     </Box>
   );

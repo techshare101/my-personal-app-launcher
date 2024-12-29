@@ -57,18 +57,33 @@ export default function WorkflowBuilder({ apps }) {
       return;
     }
 
+    if (selectedApps.length === 0) {
+      alert('Please add at least one app to the workflow');
+      return;
+    }
+
     try {
-      await saveWorkflow({
-        name: workflowName,
-        apps: selectedApps,
+      const workflowData = {
+        name: workflowName.trim(),
+        apps: selectedApps.map(app => ({
+          id: app.id,
+          name: app.name,
+          url: app.url
+        })),
         order: selectedApps.map(app => app.id)
-      });
+      };
+
+      await saveWorkflow(workflowData);
       
+      // Clear form after successful save
       setWorkflowName('');
       setSelectedApps([]);
+      
+      // Show success message
+      alert('Workflow saved successfully!');
     } catch (error) {
       console.error('Error saving workflow:', error);
-      alert('Failed to save workflow');
+      alert(error.message || 'Failed to save workflow. Please try again.');
     }
   };
 

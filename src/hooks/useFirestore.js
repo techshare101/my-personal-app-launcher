@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, addDoc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 export function useFirestore() {
@@ -55,12 +55,12 @@ export function useFirestore() {
 
   const addApp = async (appData) => {
     try {
-      const docRef = await addDoc(collection(db, 'apps'), {
+      const userAppsRef = collection(db, 'users', currentUser.uid, 'apps');
+      const docRef = await addDoc(userAppsRef, {
         ...appData,
-        userId: currentUser.uid,
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp(),
       });
-      const newApp = { id: docRef.id, ...appData };
+      const newApp = { id: docRef.id, ...appData, createdAt: serverTimestamp() };
       setApps(prev => [...prev, newApp]);
       return newApp;
     } catch (error) {

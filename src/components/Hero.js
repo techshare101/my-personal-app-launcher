@@ -34,16 +34,15 @@ const Hero = () => {
           <Grid item xs={12} md={6}>
             <Grow in={true} timeout={1000}>
               <Box>
-                <GradientText
-                  variant="h2"
+                <Typography
                   component="h1"
-                  sx={{
-                    fontWeight: 'bold',
-                    mb: 2,
-                  }}
+                  variant="h2"
+                  align="center"
+                  color="text.primary"
+                  gutterBottom
                 >
-                  Your Personal App Launcher
-                </GradientText>
+                  Smart App Launcher
+                </Typography>
                 <Typography
                   variant="h5"
                   color="text.secondary"
