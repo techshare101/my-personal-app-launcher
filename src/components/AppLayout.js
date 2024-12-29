@@ -20,6 +20,7 @@ import Hero from './Hero';
 import Features from './Features';
 import Footer from './Footer';
 import GetStarted from '../pages/GetStarted';
+import ChatBot from './ChatBot';
 
 export default function AppLayout() {
   const { currentUser, loginWithGoogle, logout } = useAuth();
@@ -123,6 +124,8 @@ export default function AppLayout() {
         } />
         <Route path="/apps" element={<Navigate to="/dashboard" replace />} />
       </Routes>
+      
+      <ChatBot />
     </>
   );
 }

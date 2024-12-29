@@ -21,11 +21,11 @@ export default function Dashboard() {
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [currentTab, setCurrentTab] = useState(0);
   const { currentUser } = useAuth();
-  const { apps, loading, error, saveApp, deleteApp } = useFirestore();
+  const { apps, loading, error, addApp, deleteApp } = useFirestore();
 
   const handleAddApp = async (appData) => {
     try {
-      await saveApp(appData);
+      await addApp(appData);
       setOpenAddDialog(false);
     } catch (error) {
       console.error('Error adding app:', error);
