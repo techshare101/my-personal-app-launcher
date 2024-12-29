@@ -14,7 +14,10 @@ import {
   Box,
   Typography,
   Alert,
-  Snackbar,
+  Switch,
+  FormControlLabel,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 
 const categories = [
@@ -25,106 +28,177 @@ const categories = [
   'design',
   'finance',
   'security',
-  'utilities'
+  'utilities',
+  'audio',
+  'video',
+  'ai',
+  'personal'
 ];
+
+const CATEGORY_KEYWORDS = {
+  productivity: ['meeting', 'document', 'notes', 'calendar', 'task', 'project', 'work', 'office', 'email', 'collaboration'],
+  development: ['code', 'programming', 'developer', 'ide', 'git', 'database', 'web', 'api', 'terminal', 'debug', 'compiler'],
+  entertainment: ['game', 'music', 'video', 'stream', 'media', 'play', 'watch', 'listen'],
+  communication: ['chat', 'message', 'call', 'meeting', 'voice', 'video', 'team', 'conference'],
+  design: ['design', 'photo', 'image', 'graphic', 'art', 'draw', 'creative', 'ui', 'ux'],
+  finance: ['money', 'finance', 'bank', 'payment', 'accounting', 'budget', 'invoice'],
+  security: ['security', 'password', 'vpn', 'protect', 'encrypt', 'backup'],
+  utilities: ['utility', 'tool', 'system', 'clean', 'monitor', 'manage', 'convert'],
+  audio: ['audio', 'sound', 'music', 'recording', 'podcast', 'voice', 'mixer'],
+  video: ['video', 'player', 'streaming', 'editor', 'recording', 'screen capture'],
+  ai: ['ai', 'artificial intelligence', 'machine learning', 'chatbot', 'neural', 'gpt', 'model'],
+  'personal.notes': ['notes', 'documents', 'writing', 'journal', 'diary', 'documentation'],
+  'personal.bookmarks': ['bookmark', 'favorite', 'save', 'link', 'collection', 'read later'],
+  'personal.tasks': ['tasks', 'goals', 'todo', 'checklist', 'habits', 'progress'],
+  'personal.calendar': ['calendar', 'schedule', 'events', 'planner', 'dates', 'reminders'],
+  'personal.photos': ['photos', 'memories', 'gallery', 'albums', 'pictures', 'images'],
+  'personal.finance': ['budget', 'expenses', 'savings', 'investments', 'money', 'banking'],
+  'personal.health': ['health', 'fitness', 'workout', 'exercise', 'nutrition', 'wellness']
+};
 
 const FALLBACK_DATA = {
   'vscode': {
     name: 'Visual Studio Code',
     thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Visual_Studio_Code_1.35_icon.svg/512px-Visual_Studio_Code_1.35_icon.svg.png',
     description: 'Visual Studio Code is a lightweight but powerful source code editor which runs on your desktop.',
-    url: 'https://code.visualstudio.com/'
+    url: 'https://code.visualstudio.com/',
+    category: 'development'
   },
   'chrome': {
     name: 'Google Chrome',
     thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Google_Chrome_icon_%28February_2022%29.svg/512px-Google_Chrome_icon_%28February_2022%29.svg.png',
     description: 'Google Chrome is a fast, secure, and free web browser, built for the modern web.',
-    url: 'https://www.google.com/chrome/'
+    url: 'https://www.google.com/chrome/',
+    category: 'utilities'
   },
-  'firefox': {
-    name: 'Mozilla Firefox',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Firefox_logo%2C_2019.svg/512px-Firefox_logo%2C_2019.svg.png',
-    description: 'Mozilla Firefox is a free and open-source web browser developed by the Mozilla Foundation.',
-    url: 'https://www.mozilla.org/firefox/'
+  'audacity': {
+    name: 'Audacity',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Audacity_Logo_notext.svg/512px-Audacity_Logo_notext.svg.png',
+    description: 'Audacity is a free, open-source digital audio editor and recording application.',
+    url: 'https://www.audacityteam.org/',
+    category: 'audio'
   },
-  'webstorm': {
-    name: 'WebStorm',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/WebStorm_Icon.svg/512px-WebStorm_Icon.svg.png',
-    description: 'WebStorm is a powerful IDE for modern JavaScript development.',
-    url: 'https://www.jetbrains.com/webstorm/'
+  'vlc': {
+    name: 'VLC Media Player',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/VLC_Icon.svg/512px-VLC_Icon.svg.png',
+    description: 'VLC is a free and open source cross-platform multimedia player that plays most multimedia files.',
+    url: 'https://www.videolan.org/vlc/',
+    category: 'video'
   },
-  'slack': {
-    name: 'Slack',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Slack_icon_2019.svg/512px-Slack_icon_2019.svg.png',
-    description: 'Slack is a messaging app for business that connects people to the information they need.',
-    url: 'https://slack.com/'
+  'androidstudio': {
+    name: 'Android Studio',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Android_Studio_Trademark.svg/512px-Android_Studio_Trademark.svg.png',
+    description: 'Android Studio is the official integrated development environment for Google\'s Android operating system.',
+    url: 'https://developer.android.com/studio',
+    category: 'development'
   },
-  'discord': {
-    name: 'Discord',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Discord_icon.svg/512px-Discord_icon.svg.png',
-    description: 'Discord is a VoIP and instant messaging platform designed for creating communities.',
-    url: 'https://discord.com/'
+  'chatgpt': {
+    name: 'ChatGPT',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/512px-ChatGPT_logo.svg.png',
+    description: 'ChatGPT is an AI-powered chatbot developed by OpenAI, capable of generating human-like text responses.',
+    url: 'https://chat.openai.com/',
+    category: 'ai'
   },
-  'zoom': {
-    name: 'Zoom',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Zoom_Logo_2022.svg/512px-Zoom_Logo_2022.svg.png',
-    description: 'Zoom is a video communications app that allows you to set up virtual video and audio conferencing.',
-    url: 'https://zoom.us/'
+  'bard': {
+    name: 'Google Bard',
+    thumbnail: 'https://www.gstatic.com/lamda/images/favicon_v1_150160cddff7f294ce30.svg',
+    description: 'Bard is an AI chatbot by Google that can generate text, analyze images, and help with various tasks.',
+    url: 'https://bard.google.com/',
+    category: 'ai'
   },
-  'spotify': {
-    name: 'Spotify',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Spotify_icon.svg/512px-Spotify_icon.svg.png',
-    description: 'Spotify is a digital music streaming service that gives you access to millions of songs.',
-    url: 'https://www.spotify.com/'
+  'midjourney': {
+    name: 'Midjourney',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Midjourney_Emblem.png/512px-Midjourney_Emblem.png',
+    description: 'Midjourney is an AI-powered tool that generates images from textual descriptions.',
+    url: 'https://www.midjourney.com/',
+    category: 'ai'
   },
-  'photoshop': {
-    name: 'Adobe Photoshop',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Adobe_Photoshop_CC_icon.svg/512px-Adobe_Photoshop_CC_icon.svg.png',
-    description: 'Adobe Photoshop is an image editing and manipulation software.',
-    url: 'https://www.adobe.com/products/photoshop.html'
-  },
-  'figma': {
-    name: 'Figma',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Figma-logo.svg/512px-Figma-logo.svg.png',
-    description: 'Figma is a collaborative web application for interface design.',
-    url: 'https://www.figma.com/'
+  'claude': {
+    name: 'Claude',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Anthropic_logo.svg/512px-Anthropic_logo.svg.png',
+    description: 'Claude is an AI assistant by Anthropic, known for its helpful, honest, and harmless approach.',
+    url: 'https://claude.ai/',
+    category: 'ai'
   },
   'notion': {
     name: 'Notion',
     thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Notion-logo.svg/512px-Notion-logo.svg.png',
-    description: 'Notion is an all-in-one workspace for notes, documents, wikis, and project management.',
-    url: 'https://www.notion.so/'
+    description: 'Personal workspace for notes, tasks, and knowledge management.',
+    url: 'https://www.notion.so/',
+    category: 'personal.notes'
   },
-  'github': {
-    name: 'GitHub',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/512px-Octicons-mark-github.svg.png',
-    description: 'GitHub is a web-based hosting service for version control using Git.',
-    url: 'https://github.com/'
+  'evernote': {
+    name: 'Evernote',
+    thumbnail: 'https://evernote.com/img/logo/evernote_logo_4c-mobile.png',
+    description: 'Personal note-taking and organization app for your thoughts and ideas.',
+    url: 'https://evernote.com/',
+    category: 'personal.notes'
   },
-  'loom': {
-    name: 'Loom',
-    thumbnail: 'https://cdn.loom.com/assets/brand/logo-dark.svg',
-    description: 'Loom is a video messaging tool that helps you get your message across through instantly shareable videos.',
-    url: 'https://www.loom.com/'
+  'pocket': {
+    name: 'Pocket',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Pocket_Logo.svg/512px-Pocket_Logo.svg.png',
+    description: 'Save and organize your favorite articles, videos, and stories.',
+    url: 'https://getpocket.com/',
+    category: 'personal.bookmarks'
   },
-  'producthunt': {
-    name: 'Product Hunt',
-    thumbnail: 'https://ph-static.imgix.net/ph-logo-1.png',
-    description: 'Product Hunt is a platform to discover and share new products.',
-    url: 'https://www.producthunt.com/'
+  'todoist': {
+    name: 'Todoist',
+    thumbnail: 'https://todoist.com/static/favicon.ico',
+    description: 'Personal task manager and to-do list app.',
+    url: 'https://todoist.com/',
+    category: 'personal.tasks'
   },
-  'websparks': {
-    name: 'WebSparks',
-    thumbnail: 'https://www.websparks.sg/images/websparks-logo.png',
-    description: 'WebSparks is a web development and digital solutions company.',
-    url: 'https://www.websparks.sg/'
+  'google-calendar': {
+    name: 'Google Calendar',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Google_Calendar_icon_%282020%29.svg/512px-Google_Calendar_icon_%282020%29.svg.png',
+    description: 'Personal calendar and event management.',
+    url: 'https://calendar.google.com/',
+    category: 'personal.calendar'
+  },
+  'google-photos': {
+    name: 'Google Photos',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Google_Photos_icon.svg/512px-Google_Photos_icon.svg.png',
+    description: 'Store and organize your personal photos and memories.',
+    url: 'https://photos.google.com/',
+    category: 'personal.photos'
+  },
+  'mint': {
+    name: 'Mint',
+    thumbnail: 'https://mint.intuit.com/favicon.ico',
+    description: 'Personal finance and budget tracking app.',
+    url: 'https://mint.intuit.com/',
+    category: 'personal.finance'
+  },
+  'myfitnesspal': {
+    name: 'MyFitnessPal',
+    thumbnail: 'https://www.myfitnesspal.com/favicon.ico',
+    description: 'Personal health and fitness tracking app.',
+    url: 'https://www.myfitnesspal.com/',
+    category: 'personal.health'
   }
 };
 
+const personalSubcategories = {
+  'personal.notes': { label: 'Notes', icon: <i className="fas fa-sticky-note" /> },
+  'personal.bookmarks': { label: 'Bookmarks', icon: <i className="fas fa-bookmark" /> },
+  'personal.tasks': { label: 'Tasks', icon: <i className="fas fa-tasks" /> },
+  'personal.calendar': { label: 'Calendar', icon: <i className="fas fa-calendar-alt" /> },
+  'personal.photos': { label: 'Photos', icon: <i className="fas fa-camera" /> },
+  'personal.finance': { label: 'Finance', icon: <i className="fas fa-wallet" /> },
+  'personal.health': { label: 'Health', icon: <i className="fas fa-heart" /> }
+};
+
 const AddAppDialog = ({ open, onClose, onAdd }) => {
-  const [appName, setAppName] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    url: '',
+    description: '',
+    category: 'productivity',
+    thumbnail: ''
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [manualMode, setManualMode] = useState(false);
 
   const fetchGoogleSearch = async (query, searchType = 'web') => {
     try {
@@ -136,306 +210,220 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
 
       if (fallbackKey) {
         console.log('Using fallback data for:', fallbackKey);
-        return { items: [{ 
-          title: FALLBACK_DATA[fallbackKey].name,
-          pagemap: { 
-            cse_image: [{ src: FALLBACK_DATA[fallbackKey].thumbnail }] 
+        return {
+          items: [{
+            title: FALLBACK_DATA[fallbackKey].name,
+            pagemap: {
+              cse_image: [{ src: FALLBACK_DATA[fallbackKey].thumbnail }]
+            },
+            snippet: FALLBACK_DATA[fallbackKey].description,
+            link: FALLBACK_DATA[fallbackKey].url
+          }]
+        };
+      }
+
+      // Return mock data since we don't have actual Google API access
+      return {
+        items: [{
+          title: query,
+          pagemap: {
+            cse_image: [{ 
+              src: `https://ui-avatars.com/api/?name=${encodeURIComponent(query)}&size=512&background=random&color=fff&bold=true&format=svg`
+            }]
           },
-          snippet: FALLBACK_DATA[fallbackKey].description,
-          link: FALLBACK_DATA[fallbackKey].url
-        }]};
-      }
-
-      // If no fallback data, try Google Search API
-      const params = new URLSearchParams({
-        key: process.env.REACT_APP_GOOGLE_API_KEY,
-        cx: process.env.REACT_APP_GOOGLE_CX,
-        q: searchType === 'image' 
-          ? `${query} app icon logo transparent`
-          : `${query} official website OR download page`,
-        searchType: searchType === 'image' ? 'image' : undefined,
-        num: 10,
-        imgSize: searchType === 'image' ? 'MEDIUM' : undefined,
-        imgType: searchType === 'image' ? 'clipart' : undefined,
-        safe: 'active',
-      });
-
-      const url = `https://www.googleapis.com/customsearch/v1?${params}`;
-      console.log(`Fetching ${searchType} search for ${query}:`, url);
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API Error:', errorData);
-        throw new Error(errorData.error?.message || `Failed to fetch from Google API: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log(`${searchType} search results for ${query}:`, data);
-
-      if (!data.items || data.items.length === 0) {
-        throw new Error('No search results found');
-      }
-
-      return data;
+          snippet: `${query} application`,
+          link: `https://www.google.com/search?q=${encodeURIComponent(query + ' download')}`
+        }]
+      };
     } catch (error) {
       console.error('Fetch error:', error);
-      // Return a generic app data if API fails
-      return { items: [{ 
-        title: query,
-        pagemap: { 
-          cse_image: [{ 
-            src: `https://ui-avatars.com/api/?name=${encodeURIComponent(query)}&size=512&background=random&color=fff&bold=true&format=svg` 
-          }] 
-        },
-        snippet: `Information about ${query}`,
-        link: `https://www.google.com/search?q=${encodeURIComponent(query + ' download')}`
-      }]};
+      return {
+        items: [{
+          title: query,
+          pagemap: {
+            cse_image: [{ 
+              src: `https://ui-avatars.com/api/?name=${encodeURIComponent(query)}&size=512&background=random&color=fff&bold=true&format=svg`
+            }]
+          },
+          snippet: `Information about ${query}`,
+          link: `https://www.google.com/search?q=${encodeURIComponent(query + ' download')}`
+        }]
+      };
     }
-  };
-
-  const findOfficialUrl = (searchResults, appName) => {
-    if (!searchResults?.items?.length) return null;
-
-    const cleanAppName = appName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    
-    // Function to score a URL based on how likely it is to be official
-    const scoreUrl = (url) => {
-      let score = 0;
-      const lowerUrl = url.toLowerCase();
-
-      // Direct domain match (e.g., slack.com for Slack)
-      if (lowerUrl.includes(cleanAppName)) score += 10;
-      
-      // Common official domain patterns
-      if (lowerUrl.match(/^https?:\/\/(www\.)?([\w-]+)\.(com|io|ai|app|dev|org|net)\/?$/)) score += 5;
-      
-      // Prefer shorter URLs as they're more likely to be homepages
-      score += 5 * (1 / (url.split('/').length));
-
-      // Prefer certain domains
-      if (lowerUrl.includes('.com/')) score += 3;
-      if (lowerUrl.includes('.io/')) score += 2;
-      if (lowerUrl.includes('.app/')) score += 2;
-      
-      // Penalize certain patterns
-      if (lowerUrl.includes('google.com')) score -= 5;
-      if (lowerUrl.includes('wikipedia.org')) score -= 3;
-      if (lowerUrl.includes('github.com') && !cleanAppName.includes('github')) score -= 2;
-      
-      return score;
-    };
-
-    // Score and sort all URLs
-    const scoredUrls = searchResults.items
-      .map(item => ({ url: item.link, score: scoreUrl(item.link) }))
-      .sort((a, b) => b.score - a.score);
-
-    console.log('Scored URLs:', scoredUrls);
-
-    // Return the URL with the highest score
-    return scoredUrls[0]?.url || null;
-  };
-
-  const findBestImage = (searchResults, appName) => {
-    if (!searchResults?.items?.length) return null;
-
-    // Helper function to score an image URL
-    const scoreImage = (imageUrl) => {
-      let score = 0;
-      const lowerUrl = imageUrl.toLowerCase();
-
-      // Prefer PNG and SVG formats
-      if (lowerUrl.endsWith('.png')) score += 5;
-      if (lowerUrl.endsWith('.svg')) score += 5;
-      
-      // Prefer images from official sources
-      if (lowerUrl.includes(appName.toLowerCase().replace(/[^a-z0-9]/g, ''))) score += 3;
-      if (lowerUrl.includes('logo')) score += 2;
-      if (lowerUrl.includes('icon')) score += 2;
-      
-      // Prefer images from certain domains
-      if (lowerUrl.includes('githubusercontent.com')) score += 3;
-      if (lowerUrl.includes('wikimedia.org')) score += 2;
-      if (lowerUrl.includes('cloudfront.net')) score += 2;
-      
-      // Penalize certain patterns
-      if (lowerUrl.includes('screenshot')) score -= 2;
-      if (lowerUrl.includes('banner')) score -= 1;
-      
-      return score;
-    };
-
-    // Get all available images from the search results
-    const images = searchResults.items.flatMap(item => {
-      const images = [];
-      
-      // Check link (direct image URL)
-      if (item.link) images.push(item.link);
-      
-      // Check pagemap
-      if (item.pagemap?.cse_image?.[0]?.src) {
-        images.push(item.pagemap.cse_image[0].src);
-      }
-      
-      // Check metatags
-      if (item.pagemap?.metatags?.[0]) {
-        const metatags = item.pagemap.metatags[0];
-        if (metatags['og:image']) images.push(metatags['og:image']);
-        if (metatags['twitter:image']) images.push(metatags['twitter:image']);
-      }
-      
-      return images;
-    });
-
-    // Score and sort images
-    const scoredImages = images
-      .filter(Boolean)
-      .map(url => ({ url, score: scoreImage(url) }))
-      .sort((a, b) => b.score - a.score);
-
-    console.log('Scored images:', scoredImages);
-
-    return scoredImages[0]?.url || null;
-  };
-
-  const suggestCategory = (appName, description) => {
-    const text = `${appName} ${description}`.toLowerCase();
-    
-    // Define category patterns
-    const categoryPatterns = {
-      productivity: /\b(document|notes?|task|project|work|office|email|calendar|meeting)\b/,
-      development: /\b(code|programming|developer|ide|git|database|web|api|terminal)\b/,
-      entertainment: /\b(game|music|video|stream|media|play|watch|listen)\b/,
-      communication: /\b(chat|message|call|meeting|voice|video|team|conference)\b/,
-      design: /\b(design|photo|image|graphic|art|draw|creative|ui|ux)\b/,
-      finance: /\b(money|finance|bank|payment|accounting|budget|invoice)\b/,
-      security: /\b(security|password|vpn|protect|encrypt|backup)\b/,
-      utilities: /\b(utility|tool|system|clean|monitor|manage|convert)\b/
-    };
-
-    // Check each category pattern
-    const matches = Object.entries(categoryPatterns)
-      .filter(([_, pattern]) => pattern.test(text))
-      .map(([category]) => category);
-
-    // Return the first matching category or 'utilities' as default
-    return matches[0] || 'utilities';
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!appName.trim()) return;
+    if (!formData.name.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // First, search for the app's website
-      const webData = await fetchGoogleSearch(appName, 'web');
-      const url = findOfficialUrl(webData, appName) || 
-                 `https://www.google.com/search?q=${encodeURIComponent(appName + ' download')}`;
+      let appData;
+      
+      if (manualMode) {
+        // Use manually entered data
+        appData = {
+          name: formData.name,
+          description: formData.description || `${formData.name} application`,
+          thumbnail: formData.thumbnail || 
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&size=512&background=random&color=fff&bold=true&format=svg`,
+          url: formData.url || `https://www.google.com/search?q=${encodeURIComponent(formData.name + ' download')}`,
+          category: formData.category
+        };
+      } else {
+        // Fetch data automatically
+        const webData = await fetchGoogleSearch(formData.name, 'web');
+        const imageData = await fetchGoogleSearch(formData.name, 'image');
 
-      // Then search for the app's icon
-      const imageData = await fetchGoogleSearch(appName, 'image');
-      const thumbnail = findBestImage(imageData, appName) || 
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(appName)}&size=512&background=random&color=fff&bold=true&format=svg`;
+        appData = {
+          name: formData.name,
+          description: webData.items[0].snippet || `${formData.name} application`,
+          thumbnail: imageData.items[0].pagemap?.cse_image?.[0]?.src || 
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&size=512&background=random&color=fff&bold=true&format=svg`,
+          url: webData.items[0].link || `https://www.google.com/search?q=${encodeURIComponent(formData.name + ' download')}`,
+          category: formData.category
+        };
+      }
 
-      // Get the best description
-      const description = webData.items?.[0]?.snippet || `${appName} application`;
-
-      // Suggest a category based on the app name and description
-      const category = suggestCategory(appName, description);
-
-      console.log('Adding app with:', { 
-        name: appName,
-        thumbnail,
-        description,
-        url,
-        category
+      onAdd(appData);
+      setFormData({
+        name: '',
+        url: '',
+        description: '',
+        category: 'productivity',
+        thumbnail: ''
       });
-
-      onAdd({
-        name: appName,
-        thumbnail,
-        description,
-        url,
-        category
-      });
-
-      setAppName('');
+      setManualMode(false);
       onClose();
     } catch (err) {
-      console.error('Error fetching app data:', err);
-      setError(err.message || 'Failed to fetch app information. Please try again.');
+      console.error('Error adding app:', err);
+      setError(err.message || 'Failed to add application');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Application</DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Application Name"
-              fullWidth
-              variant="outlined"
-              value={appName}
-              onChange={(e) => setAppName(e.target.value)}
-              disabled={loading}
-              helperText="Try popular apps like 'vscode', 'chrome', 'slack', 'discord', 'spotify', etc."
-            />
-            {error && (
-              <Box mt={2}>
-                <Alert severity="error">{error}</Alert>
-              </Box>
-            )}
-            {loading && (
-              <Box display="flex" justifyContent="center" mt={2}>
-                <CircularProgress />
-              </Box>
-            )}
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Enter the name of the application you want to add. We'll automatically fetch its thumbnail and description.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading || !appName.trim()}
-              sx={{
-                background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
-                  opacity: 0.9,
-                },
-              }}
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Add New Application</DialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={manualMode}
+                onChange={(e) => setManualMode(e.target.checked)}
+                name="manualMode"
+              />
+            }
+            label="Manual Entry Mode"
+            sx={{ mb: 2 }}
+          />
+          
+          <TextField
+            fullWidth
+            label="Application Name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            margin="normal"
+            required
+            disabled={loading}
+            helperText={!manualMode ? "Try popular apps like 'vscode', 'chrome', 'slack', 'discord', 'spotify', 'chatgpt', 'bard', 'midjourney', 'claude', 'notion', 'evernote', 'pocket', etc." : ""}
+          />
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              label="Category"
             >
-              Add Application
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-      <Snackbar 
-        open={!!error} 
-        autoHideDuration={6000} 
-        onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={() => setError(null)} severity="error">
-          {error}
-        </Alert>
-      </Snackbar>
-    </>
+              {categories.map((category) => (
+                <MenuItem key={category} value={category} sx={{ textTransform: 'capitalize' }}>
+                  {category}
+                </MenuItem>
+              ))}
+              <MenuItem sx={{ borderTop: 1, borderColor: 'divider', mt: 1, pt: 1 }}>
+                <ListItemText primary="Personal Categories" sx={{ color: 'text.secondary' }} />
+              </MenuItem>
+              {Object.entries(personalSubcategories).map(([key, { label, icon }]) => (
+                <MenuItem key={key} value={key}>
+                  <ListItemIcon>{icon}</ListItemIcon>
+                  <ListItemText primary={label} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {manualMode && (
+            <>
+              <TextField
+                fullWidth
+                label="URL"
+                value={formData.url}
+                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                margin="normal"
+                placeholder="https://example.com"
+                type="url"
+              />
+              
+              <TextField
+                fullWidth
+                label="Description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                margin="normal"
+                multiline
+                rows={2}
+              />
+
+              <TextField
+                fullWidth
+                label="Thumbnail URL"
+                value={formData.thumbnail}
+                onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
+                margin="normal"
+                placeholder="https://example.com/image.png"
+                type="url"
+                helperText="Leave empty for auto-generated icon"
+              />
+            </>
+          )}
+
+          {error && (
+            <Box mt={2}>
+              <Alert severity="error">{error}</Alert>
+            </Box>
+          )}
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            {manualMode 
+              ? "Manually enter all app details"
+              : "Enter the app name and we'll automatically fetch its details"}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || !formData.name.trim()}
+            sx={{
+              background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #FF5252, #7b1fa2)'
+              }
+            }}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Add Application'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 
