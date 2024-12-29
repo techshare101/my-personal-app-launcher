@@ -5,25 +5,27 @@ import {
   Toolbar,
   Typography,
   Box,
-  Button,
   IconButton,
   Avatar,
   Menu,
   MenuItem,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationCenter from './NotificationCenter';
 import Dashboard from '../pages/Dashboard';
+import Login from './Auth/Login';
+import SignUp from './Auth/SignUp';
+import PrivateRoute from './Auth/PrivateRoute';
 import Hero from './Hero';
 import Features from './Features';
 import Footer from './Footer';
 import GetStarted from '../pages/GetStarted';
 import ChatBot from './ChatBot';
+import { Link as RouterLink } from 'react-router-dom';
 
 export default function AppLayout() {
-  const { currentUser, loginWithGoogle, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const handleMenu = (event) => {
@@ -34,13 +36,17 @@ export default function AppLayout() {
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
-    handleClose();
-    logout();
+  const handleLogout = async () => {
+    try {
+      handleClose();
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
-    <>
+    <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
         <Toolbar>
           <IconButton
@@ -53,38 +59,41 @@ export default function AppLayout() {
             <MenuIcon />
           </IconButton>
           
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            component={RouterLink} 
+            to="/" 
+            sx={{ 
+              flexGrow: 1, 
+              textDecoration: 'none', 
+              color: 'inherit' 
+            }}
+          >
             App Launcher
           </Typography>
 
-          {currentUser ? (
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {currentUser && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <NotificationCenter />
-              {currentUser.photoURL ? (
-                <IconButton
-                  onClick={handleMenu}
-                  sx={{ ml: 2 }}
-                >
-                  <Avatar
-                    src={currentUser.photoURL}
-                    alt={currentUser.displayName || 'User'}
-                    sx={{ width: 32, height: 32 }}
-                  />
-                </IconButton>
-              ) : (
-                <IconButton
-                  color="inherit"
-                  onClick={handleMenu}
-                  sx={{ ml: 2 }}
-                >
-                  <AccountCircleIcon />
-                </IconButton>
-              )}
+              <IconButton
+                size="large"
+                aria-label="account of current user"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                onClick={handleMenu}
+                color="inherit"
+              >
+                {currentUser.photoURL ? (
+                  <Avatar src={currentUser.photoURL} />
+                ) : (
+                  <Avatar>{currentUser.email ? currentUser.email[0].toUpperCase() : 'U'}</Avatar>
+                )}
+              </IconButton>
               <Menu
                 id="menu-appbar"
                 anchorEl={anchorEl}
                 anchorOrigin={{
-                  vertical: 'bottom',
+                  vertical: 'top',
                   horizontal: 'right',
                 }}
                 keepMounted
@@ -95,37 +104,38 @@ export default function AppLayout() {
                 open={Boolean(anchorEl)}
                 onClose={handleClose}
               >
-                <MenuItem onClick={handleClose}>Profile</MenuItem>
-                <MenuItem onClick={handleClose}>My Account</MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </Box>
-          ) : (
-            <Button color="inherit" onClick={loginWithGoogle}>
-              Login
-            </Button>
           )}
         </Toolbar>
       </AppBar>
 
-      <Routes>
-        <Route path="/" element={
-          <div>
-            <Hero />
-            <Features />
-            <Footer />
-          </div>
-        } />
-        <Route path="/get-started" element={<GetStarted />} />
-        <Route path="/dashboard" element={
-          <React.Suspense fallback={<div>Loading...</div>}>
-            <Dashboard />
-          </React.Suspense>
-        } />
-        <Route path="/apps" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-      
+      <Box component="main" sx={{ flexGrow: 1 }}>
+        <Routes>
+          <Route path="/login" element={
+            !currentUser ? <Login /> : <Navigate to="/dashboard" replace />
+          } />
+          <Route path="/signup" element={
+            !currentUser ? <SignUp /> : <Navigate to="/dashboard" replace />
+          } />
+          <Route path="/dashboard" element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          } />
+          <Route path="/get-started" element={<GetStarted />} />
+          <Route path="/" element={
+            <Box>
+              <Hero />
+              <Features />
+              <Footer />
+            </Box>
+          } />
+        </Routes>
+      </Box>
+
       <ChatBot />
-    </>
+    </Box>
   );
 }

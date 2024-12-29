@@ -3,9 +3,14 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   GoogleAuthProvider,
-  signOut
+  signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  getRedirectResult
 } from 'firebase/auth';
 import { auth } from '../firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const AuthContext = createContext();
 
@@ -18,9 +23,62 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Function to create or update user document
+  const createUserDocument = async (user) => {
+    if (!user) return;
+
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      try {
+        await setDoc(userRef, {
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          createdAt: new Date(),
+          lastLogin: new Date()
+        });
+        console.log('User document created');
+      } catch (error) {
+        console.error('Error creating user document:', error);
+      }
+    } else {
+      try {
+        await setDoc(userRef, {
+          lastLogin: new Date()
+        }, { merge: true });
+        console.log('User last login updated');
+      } catch (error) {
+        console.error('Error updating user last login:', error);
+      }
+    }
+  };
+
   useEffect(() => {
     try {
+      // Check for redirect result first
+      getRedirectResult(auth)
+        .then((result) => {
+          if (result?.user) {
+            createUserDocument(result.user);
+          }
+        })
+        .catch((error) => {
+          console.error('Redirect result error:', error);
+          if (error.code === 'auth/popup-closed-by-user') {
+            setError('Sign-in popup was closed. Please try again.');
+          } else {
+            setError(error.message);
+          }
+        });
+
+      // Then set up auth state listener
       const unsubscribe = onAuthStateChanged(auth, (user) => {
+        console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
+        if (user) {
+          createUserDocument(user);
+        }
         setCurrentUser(user);
         setLoading(false);
         setError(null);
@@ -38,14 +96,48 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const signUp = async (email, password) => {
+    try {
+      setError(null);
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await createUserDocument(result.user);
+      return result.user;
+    } catch (error) {
+      console.error('Error signing up with email/password:', error);
+      setError(error.message);
+      throw error;
+    }
+  };
+
+  const login = async (email, password) => {
+    try {
+      setError(null);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      return result.user;
+    } catch (error) {
+      console.error('Error signing in with email/password:', error);
+      setError(error.message);
+      throw error;
+    }
+  };
+
   const loginWithGoogle = async () => {
     try {
       setError(null);
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      const result = await signInWithPopup(auth, provider);
+      await createUserDocument(result.user);
+      return result.user;
     } catch (error) {
       console.error('Error signing in with Google:', error);
-      setError(error.message);
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in popup was closed. Please try again.');
+      } else {
+        setError(error.message);
+      }
       throw error;
     }
   };
@@ -63,9 +155,12 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
+    signUp,
+    login,
     loginWithGoogle,
     logout,
-    error
+    error,
+    loading
   };
 
   return (

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Container, Typography, Button, Grid, styled, Grow } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const GradientText = styled(Typography)(({ theme }) => ({
   background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
@@ -10,9 +11,10 @@ const GradientText = styled(Typography)(({ theme }) => ({
 
 const Hero = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
 
   const handleGetStarted = () => {
-    navigate('/get-started');
+    navigate(currentUser ? '/dashboard' : '/signup');
   };
 
   return (
@@ -50,22 +52,30 @@ const Hero = () => {
                   Streamline your workflow with a centralized hub for all your applications.
                   Connect, automate, and boost your productivity.
                 </Typography>
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={handleGetStarted}
-                  sx={{
-                    py: 1.5,
-                    px: 4,
-                    background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
-                    '&:hover': {
+                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center', gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={handleGetStarted}
+                    sx={{
                       background: 'linear-gradient(45deg, #FF6B6B, #9c27b0)',
-                      opacity: 0.9,
-                    },
-                  }}
-                >
-                  Get Started
-                </Button>
+                      color: 'white',
+                      px: 4,
+                    }}
+                  >
+                    {currentUser ? 'Go to Dashboard' : 'Get Started'}
+                  </Button>
+                  {!currentUser && (
+                    <Button
+                      variant="outlined"
+                      size="large"
+                      onClick={() => navigate('/login')}
+                      sx={{ px: 4 }}
+                    >
+                      Login
+                    </Button>
+                  )}
+                </Box>
               </Box>
             </Grow>
           </Grid>

@@ -80,65 +80,37 @@ export const processUserInput = async (input, context) => {
 
     // Help command
     if (lowercaseInput.includes('help')) {
-      return `Here are the available commands:
-- Open apps: "open [app name]"
-- Close apps: "close [app name]"
-- Start workflows: "start workflow [name]"
-- List apps: "list apps"
-- List workflows: "list workflows"
+      return `Here are the commands I understand:
 
-You can also ask me questions about your apps and workflows!
-Example: "open Chrome" or "start workflow morning routine"`;
+Basic Commands:
+- "help" - Show this help message
+- "list apps" - Show all your apps
+- "list workflows" - Show all your workflows
+
+App Commands:
+- "open [app name]" - Open an application
+- "close [app name]" - Close an application
+
+Workflow Commands:
+- "start workflow [name]" - Start a workflow
+
+Voice Commands:
+- "stop" or "stop listening" - Stop voice recognition
+
+Examples:
+- "open Chrome"
+- "close Notepad"
+- "start workflow Productivity"
+- "list apps"`;
     }
 
-    // If no direct command is recognized, use Gemini to understand and respond
+    // If no direct command matches, try to understand the intent
     try {
-      console.log('No direct command found, using Gemini...');
-      console.log('Available apps:', apps);
-      console.log('Available workflows:', workflows);
-
-      // Get app and workflow suggestions
-      console.log('Getting suggestions for:', input);
-      const [appSuggestions, workflowSuggestion] = await Promise.all([
-        generateAppSuggestions(input, apps),
-        generateWorkflowSuggestions(input, workflows)
-      ]);
-
-      console.log('App suggestions:', appSuggestions);
-      console.log('Workflow suggestion:', workflowSuggestion);
-
-      // Generate a natural language response
-      const contextPrompt = `User input: "${input}"
-Available apps: ${apps.map(app => app.name).join(', ')}
-Available workflows: ${workflows.map(w => w.name).join(', ')}
-Suggested apps: ${appSuggestions.join(', ') || 'None'}
-Suggested workflow: ${workflowSuggestion || 'None'}
-
-Please help the user by:
-1. Understanding their request
-2. Suggesting relevant apps or workflows
-3. Providing clear instructions on how to proceed
-
-Keep the response concise and helpful.`;
-
-      console.log('Generating response with context:', contextPrompt);
-      const response = await generateResponse(contextPrompt);
-      console.log('Generated response:', response);
-
-      // If there are suggestions, add them to the response
-      let finalResponse = response;
-      if (appSuggestions.length > 0) {
-        finalResponse += `\n\nWould you like me to open any of these apps: ${appSuggestions.join(', ')}?`;
-      }
-      if (workflowSuggestion) {
-        finalResponse += `\n\nI can start the "${workflowSuggestion}" workflow for you if you'd like.`;
-      }
-
-      console.log('Final response:', finalResponse);
-      return finalResponse;
+      const response = await generateResponse(input, { apps, workflows });
+      return response;
     } catch (error) {
-      console.error('Error processing with Gemini:', error);
-      throw error; // Let the main error handler deal with it
+      console.error('Error generating response:', error);
+      return "I'm not sure how to help with that. Try saying 'help' to see what I can do.";
     }
   } catch (error) {
     console.error('Error processing command:', error);

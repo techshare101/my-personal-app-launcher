@@ -57,6 +57,65 @@ const ChatBot = () => {
     }]);
   };
 
+  const toggleVoice = async () => {
+    console.log('Toggle voice called. Voice supported:', voiceSupported);
+    if (!voiceSupported) {
+      setError('Voice recognition is not supported in your browser');
+      return;
+    }
+
+    try {
+      if (isListening) {
+        console.log('Stopping voice recognition...');
+        stopListening();
+        setIsListening(false);
+      } else {
+        console.log('Starting voice recognition...');
+        setIsListening(true);
+        await startListening(
+          async (text) => {
+            console.log('Voice command received:', text);
+            // Add user's voice input to chat
+            addMessage(text, 'user');
+            
+            try {
+              // Process the voice command
+              const response = await processUserInput(text, { apps, workflows });
+              console.log('Voice command response:', response);
+              
+              // Add bot response to chat
+              addMessage(response, 'bot');
+              
+              // Only speak if we're still listening
+              if (isListening) {
+                await speak(response);
+              }
+            } catch (error) {
+              console.error('Error processing voice command:', error);
+              const errorMessage = 'Sorry, I encountered an error processing your voice command. Please try again.';
+              addMessage(errorMessage, 'bot', true);
+              if (isListening) {
+                await speak(errorMessage);
+              }
+            }
+          },
+          async (error) => {
+            console.error('Voice recognition error:', error);
+            if (error !== 'no-speech') {
+              setError(error);
+              setIsListening(false);
+              addMessage(`Voice recognition error: ${error}`, 'bot', true);
+            }
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling voice:', error);
+      setError('Error toggling voice recognition');
+      setIsListening(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -81,52 +140,6 @@ const ChatBot = () => {
     } catch (error) {
       console.error('Error processing message:', error);
       addMessage('Sorry, I encountered an error. Please try again.', 'bot', true);
-    }
-  };
-
-  const toggleVoice = async () => {
-    console.log('Toggle voice called. Voice supported:', voiceSupported);
-    if (!voiceSupported) {
-      setError('Voice recognition is not supported in your browser');
-      return;
-    }
-
-    try {
-      if (isListening) {
-        console.log('Stopping voice recognition...');
-        stopListening();
-        setIsListening(false);
-      } else {
-        console.log('Starting voice recognition...');
-        setIsListening(true);
-        try {
-          await startListening(
-            // onResult
-            async (text) => {
-              console.log('Voice recognition result:', text);
-              setInput(text);
-              const event = { preventDefault: () => {} };
-              await handleSubmit(event);
-            },
-            // onError
-            (error) => {
-              console.error('Voice recognition error:', error);
-              if (error !== 'no-speech') {
-                setError('Sorry, I had trouble understanding that. Please try again.');
-                setIsListening(false);
-              }
-            }
-          );
-        } catch (error) {
-          console.error('Error starting voice recognition:', error);
-          setError('Failed to start voice recognition. Please check microphone permissions.');
-          setIsListening(false);
-        }
-      }
-    } catch (error) {
-      console.error('Error toggling voice recognition:', error);
-      setError('Failed to toggle voice recognition');
-      setIsListening(false);
     }
   };
 
