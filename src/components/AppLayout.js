@@ -7,6 +7,9 @@ import {
   Box,
   Button,
   IconButton,
+  Avatar,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -20,6 +23,20 @@ import GetStarted from '../pages/GetStarted';
 
 export default function AppLayout() {
   const { currentUser, loginWithGoogle, logout } = useAuth();
+  const [anchorEl, setAnchorEl] = React.useState(null);
+
+  const handleMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    handleClose();
+    logout();
+  };
 
   return (
     <>
@@ -42,13 +59,45 @@ export default function AppLayout() {
           {currentUser ? (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <NotificationCenter />
-              <IconButton
-                color="inherit"
-                sx={{ ml: 2 }}
-                onClick={logout}
+              {currentUser.photoURL ? (
+                <IconButton
+                  onClick={handleMenu}
+                  sx={{ ml: 2 }}
+                >
+                  <Avatar
+                    src={currentUser.photoURL}
+                    alt={currentUser.displayName || 'User'}
+                    sx={{ width: 32, height: 32 }}
+                  />
+                </IconButton>
+              ) : (
+                <IconButton
+                  color="inherit"
+                  onClick={handleMenu}
+                  sx={{ ml: 2 }}
+                >
+                  <AccountCircleIcon />
+                </IconButton>
+              )}
+              <Menu
+                id="menu-appbar"
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                keepMounted
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                open={Boolean(anchorEl)}
+                onClose={handleClose}
               >
-                <AccountCircleIcon />
-              </IconButton>
+                <MenuItem onClick={handleClose}>Profile</MenuItem>
+                <MenuItem onClick={handleClose}>My Account</MenuItem>
+                <MenuItem onClick={handleLogout}>Logout</MenuItem>
+              </Menu>
             </Box>
           ) : (
             <Button color="inherit" onClick={loginWithGoogle}>

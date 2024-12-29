@@ -13,7 +13,7 @@ import {
 import LaunchIcon from '@mui/icons-material/Launch';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CategoryFilter from './CategoryFilter';
-import SearchBar from './SearchBar'; // Import SearchBar component
+import SearchBar from './SearchBar';
 
 const AppList = ({ apps, onAddClick, onDeleteApp }) => {
   const [filteredApps, setFilteredApps] = useState(apps);
@@ -25,14 +25,24 @@ const AppList = ({ apps, onAddClick, onDeleteApp }) => {
 
     // Apply category filter
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(app => app.category === selectedCategory);
+      if (selectedCategory.startsWith('personal.')) {
+        filtered = filtered.filter(app => app.category === selectedCategory);
+      } else {
+        filtered = filtered.filter(app => {
+          // If selected category is 'personal', show all personal subcategories
+          if (selectedCategory === 'personal') {
+            return app.category.startsWith('personal.');
+          }
+          return app.category === selectedCategory;
+        });
+      }
     }
 
     // Apply search filter if there's a search term
     if (searchInfo?.term) {
       filtered = filtered.filter(app => 
-        app.name.toLowerCase().includes(searchInfo.term) ||
-        app.description?.toLowerCase().includes(searchInfo.term) ||
+        app.name.toLowerCase().includes(searchInfo.term.toLowerCase()) ||
+        app.description?.toLowerCase().includes(searchInfo.term.toLowerCase()) ||
         searchInfo.categories.includes(app.category)
       );
     }
@@ -50,6 +60,23 @@ const AppList = ({ apps, onAddClick, onDeleteApp }) => {
     if (info.categories.length > 0) {
       setSelectedCategory(info.categories[0]);
     }
+  };
+
+  const getCategoryLabel = (category) => {
+    if (category.startsWith('personal.')) {
+      const subcategories = {
+        'personal.notes': 'Notes & Docs',
+        'personal.bookmarks': 'Bookmarks',
+        'personal.tasks': 'Tasks & Goals',
+        'personal.calendar': 'Calendar & Events',
+        'personal.photos': 'Photos & Memories',
+        'personal.finance': 'Personal Finance',
+        'personal.health': 'Health & Fitness',
+        'personal.integrations': 'Integrations & Automation'
+      };
+      return subcategories[category] || category;
+    }
+    return category.charAt(0).toUpperCase() + category.slice(1);
   };
 
   return (
@@ -105,26 +132,27 @@ const AppList = ({ apps, onAddClick, onDeleteApp }) => {
                 <Typography variant="body2" color="text.secondary">
                   {app.description}
                 </Typography>
-                <Box sx={{ mt: 1 }}>
-                  <Chip
-                    label={app.category}
+                <Box sx={{ mt: 2 }}>
+                  <Chip 
+                    label={getCategoryLabel(app.category)}
                     size="small"
-                    sx={{ textTransform: 'capitalize' }}
+                    color={app.category.startsWith('personal.') ? 'primary' : 'default'}
+                    variant={app.category.startsWith('personal.') ? 'filled' : 'outlined'}
                   />
                 </Box>
               </CardContent>
               <CardActions>
-                <IconButton
-                  size="small"
+                <IconButton 
+                  aria-label="launch"
                   onClick={() => handleLaunchApp(app)}
-                  title="Launch application"
+                  color="primary"
                 >
                   <LaunchIcon />
                 </IconButton>
-                <IconButton
-                  size="small"
+                <IconButton 
+                  aria-label="delete"
                   onClick={() => onDeleteApp(app.id)}
-                  title="Remove application"
+                  color="error"
                 >
                   <DeleteIcon />
                 </IconButton>

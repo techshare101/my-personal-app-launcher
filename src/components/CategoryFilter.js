@@ -17,6 +17,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PhotoIcon from '@mui/icons-material/Photo';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import SyncIcon from '@mui/icons-material/Sync';
 
 const categories = [
   'all',
@@ -41,7 +42,8 @@ const personalSubcategories = {
   'personal.calendar': { label: 'Calendar & Events', icon: <CalendarTodayIcon /> },
   'personal.photos': { label: 'Photos & Memories', icon: <PhotoIcon /> },
   'personal.finance': { label: 'Personal Finance', icon: <AttachMoneyIcon /> },
-  'personal.health': { label: 'Health & Fitness', icon: <FitnessCenterIcon /> }
+  'personal.health': { label: 'Health & Fitness', icon: <FitnessCenterIcon /> },
+  'personal.integrations': { label: 'Integrations & Automation', icon: <SyncIcon /> }
 };
 
 export default function CategoryFilter({ selectedCategory, onCategoryChange }) {

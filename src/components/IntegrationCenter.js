@@ -12,6 +12,8 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -20,9 +22,19 @@ import { useIntegrations } from '../hooks/useIntegrations';
 import IntegrationDialog from './IntegrationDialog';
 import { INTEGRATION_TEMPLATES, PLATFORMS } from '../services/integrationService';
 
+const CUSTOM_TEMPLATE = {
+  id: 'custom',
+  name: 'Custom Integration',
+  description: 'Create your own custom integration by mixing and matching apps',
+  platforms: [],
+  type: 'personal',
+  category: 'integrations'
+};
+
 export default function IntegrationCenter() {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [currentTab, setCurrentTab] = useState(0);
   const {
     integrations,
     loading,
@@ -59,6 +71,10 @@ export default function IntegrationCenter() {
     }
   };
 
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue);
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -75,100 +91,202 @@ export default function IntegrationCenter() {
     );
   }
 
+  const personalTemplates = Object.values(INTEGRATION_TEMPLATES).filter(
+    template => template.type === 'personal'
+  );
+
+  const activeIntegrations = integrations || [];
+
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          Integration Templates
-        </Typography>
-        <Grid container spacing={3}>
-          {Object.values(INTEGRATION_TEMPLATES).map((template) => (
-            <Grid item key={template.id} xs={12} sm={6} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {template.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {template.description}
-                  </Typography>
-                  <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                    {template.platforms.map(platform => {
-                      const platformInfo = PLATFORMS[platform];
-                      return platformInfo ? (
-                        <Chip
-                          key={platform}
-                          label={platformInfo.name}
-                          size="small"
-                        />
-                      ) : null;
-                    })}
-                  </Box>
-                </CardContent>
-                <CardActions>
-                  <Button
-                    size="small"
-                    startIcon={<AddIcon />}
-                    onClick={() => {
-                      setSelectedTemplate(template);
-                      setOpenDialog(true);
-                    }}
-                  >
-                    Create
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={currentTab} onChange={handleTabChange}>
+          <Tab label="Templates" />
+          <Tab label="Active Integrations" />
+          <Tab label="Personal Integrations" />
+        </Tabs>
       </Box>
 
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          Active Integrations
-        </Typography>
-        <Grid container spacing={3}>
-          {integrations?.map((integration) => (
-            <Grid item key={integration.id} xs={12} sm={6} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {INTEGRATION_TEMPLATES[integration.templateId]?.name || 'Unknown Integration'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Status: {integration.status}
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleTestIntegration(integration.id)}
-                    title="Test Integration"
-                  >
-                    <PlayArrowIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteIntegration(integration.id)}
-                    title="Delete Integration"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
+      {currentTab === 0 && (
+        <Box>
+          <Typography variant="h5" gutterBottom>
+            Integration Templates
+          </Typography>
+          <Box sx={{ mb: 3 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setSelectedTemplate(CUSTOM_TEMPLATE);
+                setOpenDialog(true);
+              }}
+            >
+              Create Custom Integration
+            </Button>
+          </Box>
+          <Grid container spacing={3}>
+            {Object.values(INTEGRATION_TEMPLATES).map((template) => (
+              <Grid item key={template.id} xs={12} sm={6} md={4}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      {template.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {template.description}
+                    </Typography>
+                    <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {template.platforms.map(platform => {
+                        const platformInfo = PLATFORMS[platform];
+                        return platformInfo ? (
+                          <Chip
+                            key={platform}
+                            label={platformInfo.name}
+                            size="small"
+                            sx={{
+                              backgroundColor: platformInfo.color,
+                              color: 'white',
+                            }}
+                          />
+                        ) : null;
+                      })}
+                      <Chip
+                        label={template.type}
+                        size="small"
+                        color={template.type === 'personal' ? 'primary' : 'default'}
+                      />
+                    </Box>
+                  </CardContent>
+                  <CardActions>
+                    <Button
+                      size="small"
+                      color="primary"
+                      onClick={() => {
+                        setSelectedTemplate(template);
+                        setOpenDialog(true);
+                      }}
+                    >
+                      Create Integration
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      {currentTab === 1 && (
+        <Box>
+          <Typography variant="h5" gutterBottom>
+            Active Integrations
+          </Typography>
+          <Grid container spacing={3}>
+            {activeIntegrations.map((integration) => (
+              <Grid item key={integration.id} xs={12} sm={6} md={4}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      {integration.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {integration.description}
+                    </Typography>
+                    <Box sx={{ mt: 2 }}>
+                      <Chip
+                        label={integration.status}
+                        color={integration.status === 'active' ? 'success' : 'warning'}
+                        size="small"
+                      />
+                    </Box>
+                  </CardContent>
+                  <CardActions>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleTestIntegration(integration.id)}
+                      color="primary"
+                    >
+                      <PlayArrowIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteIntegration(integration.id)}
+                      color="error"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      {currentTab === 2 && (
+        <Box>
+          <Typography variant="h5" gutterBottom>
+            Personal Integrations
+          </Typography>
+          <Grid container spacing={3}>
+            {personalTemplates.map((template) => (
+              <Grid item key={template.id} xs={12} sm={6} md={4}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      {template.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {template.description}
+                    </Typography>
+                    <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {template.platforms.map(platform => {
+                        const platformInfo = PLATFORMS[platform];
+                        return platformInfo ? (
+                          <Chip
+                            key={platform}
+                            label={platformInfo.name}
+                            size="small"
+                            sx={{
+                              backgroundColor: platformInfo.color,
+                              color: 'white',
+                            }}
+                          />
+                        ) : null;
+                      })}
+                      <Chip
+                        label={template.category}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </Box>
+                  </CardContent>
+                  <CardActions>
+                    <Button
+                      size="small"
+                      color="primary"
+                      onClick={() => {
+                        setSelectedTemplate(template);
+                        setOpenDialog(true);
+                      }}
+                    >
+                      Create Integration
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
 
       <IntegrationDialog
         open={openDialog}
+        onClose={() => setOpenDialog(false)}
         template={selectedTemplate}
-        onClose={() => {
-          setOpenDialog(false);
-          setSelectedTemplate(null);
-        }}
-        onSave={handleCreateIntegration}
+        onSubmit={handleCreateIntegration}
       />
     </Box>
   );

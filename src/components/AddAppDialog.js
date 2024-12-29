@@ -53,7 +53,8 @@ const CATEGORY_KEYWORDS = {
   'personal.calendar': ['calendar', 'schedule', 'events', 'planner', 'dates', 'reminders'],
   'personal.photos': ['photos', 'memories', 'gallery', 'albums', 'pictures', 'images'],
   'personal.finance': ['budget', 'expenses', 'savings', 'investments', 'money', 'banking'],
-  'personal.health': ['health', 'fitness', 'workout', 'exercise', 'nutrition', 'wellness']
+  'personal.health': ['health', 'fitness', 'workout', 'exercise', 'nutrition', 'wellness'],
+  'personal.integrations': ['automation', 'workflow', 'zapier', 'ifttt', 'integration', 'sync', 'connect', 'automate']
 };
 
 const FALLBACK_DATA = {
@@ -175,6 +176,62 @@ const FALLBACK_DATA = {
     description: 'Personal health and fitness tracking app.',
     url: 'https://www.myfitnesspal.com/',
     category: 'personal.health'
+  },
+  'zapier': {
+    name: 'Zapier',
+    thumbnail: 'https://cdn.zapier.com/zapier/images/favicon.ico',
+    description: 'Connect your apps and automate workflows. Move info between your web apps automatically.',
+    url: 'https://zapier.com',
+    category: 'personal.integrations'
+  },
+  'ifttt': {
+    name: 'IFTTT',
+    thumbnail: 'https://assets.ifttt.com/images/channels/2107379463/icons/monochrome_large.png',
+    description: 'Connect your apps and devices to create powerful automations and workflows.',
+    url: 'https://ifttt.com',
+    category: 'personal.integrations'
+  },
+  'make': {
+    name: 'Make (Integromat)',
+    thumbnail: 'https://images.g2crowd.com/uploads/product/image/large_detail/large_detail_477ea5f48b8eb46e6af1980277a494d2/make.png',
+    description: 'Visual platform for creating complex automated workflows and integrations.',
+    url: 'https://www.make.com',
+    category: 'personal.integrations'
+  },
+  'n8n': {
+    name: 'n8n',
+    thumbnail: 'https://avatars.githubusercontent.com/u/45487711',
+    description: 'Open-source workflow automation tool with a visual interface.',
+    url: 'https://n8n.io',
+    category: 'personal.integrations'
+  },
+  'powerautomate': {
+    name: 'Power Automate',
+    thumbnail: 'https://powerautomate.microsoft.com/images/application-logos/svg/powerautomate.svg',
+    description: 'Microsoft\'s automation tool for creating workflows between apps and services.',
+    url: 'https://powerautomate.microsoft.com',
+    category: 'personal.integrations'
+  },
+  'automate': {
+    name: 'Automate.io',
+    thumbnail: 'https://www.automate.io/favicon.ico',
+    description: 'Cloud-based integration platform for connecting your apps and automating workflows.',
+    url: 'https://automate.io',
+    category: 'personal.integrations'
+  },
+  'tray': {
+    name: 'Tray.io',
+    thumbnail: 'https://tray.io/favicon.ico',
+    description: 'Advanced integration platform for enterprise automation needs.',
+    url: 'https://tray.io',
+    category: 'personal.integrations'
+  },
+  'workato': {
+    name: 'Workato',
+    thumbnail: 'https://workato.com/favicon.ico',
+    description: 'Enterprise automation platform for complex business workflows.',
+    url: 'https://workato.com',
+    category: 'personal.integrations'
   }
 };
 
@@ -185,7 +242,8 @@ const personalSubcategories = {
   'personal.calendar': { label: 'Calendar', icon: <i className="fas fa-calendar-alt" /> },
   'personal.photos': { label: 'Photos', icon: <i className="fas fa-camera" /> },
   'personal.finance': { label: 'Finance', icon: <i className="fas fa-wallet" /> },
-  'personal.health': { label: 'Health', icon: <i className="fas fa-heart" /> }
+  'personal.health': { label: 'Health', icon: <i className="fas fa-heart" /> },
+  'personal.integrations': { label: 'Integrations', icon: <i className="fas fa-plug" /> }
 };
 
 const AddAppDialog = ({ open, onClose, onAdd }) => {
