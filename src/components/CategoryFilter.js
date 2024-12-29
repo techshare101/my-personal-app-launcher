@@ -48,12 +48,14 @@ export default function CategoryFilter({ selectedCategory, onCategoryChange }) {
   const [personalMenuAnchor, setPersonalMenuAnchor] = useState(null);
 
   const handlePersonalClick = (event) => {
+    event.preventDefault();
     if (selectedCategory.startsWith('personal.')) {
       // If a subcategory is selected, just show the menu
       setPersonalMenuAnchor(event.currentTarget);
     } else {
       // If no subcategory is selected, select 'personal' category
       onCategoryChange('personal');
+      setPersonalMenuAnchor(event.currentTarget);
     }
   };
 
