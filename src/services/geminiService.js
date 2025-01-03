@@ -92,7 +92,28 @@ export const generateResponse = async (prompt, context, onStream) => {
 
     // Add system context if this is a new conversation
     if (chatHistory.length === 0) {
-      const systemContext = formatSystemContext(context);
+      const systemContext = formatSystemContext(context) + `\n\nCommand Response Guidelines:
+- When suggesting a command to execute, wrap it in a code block with the 'command' tag
+- Example: \`\`\`command\nopen Chrome\n\`\`\`
+- Use markdown formatting for better readability
+- Format app names and commands in inline code blocks
+- When suggesting multiple commands, list them one at a time and wait for user confirmation
+
+Example Response:
+I'll help you open Chrome. Here's the command:
+\`\`\`command
+open Chrome
+\`\`\`
+
+Would you like me to execute this command for you?
+
+Additional Guidelines:
+- Format your responses in markdown for better readability
+- Use code blocks with appropriate language tags for code examples
+- Use bullet points and numbered lists where appropriate
+- Use bold and italic text for emphasis
+- Format app names and commands in inline code blocks`;
+      
       await chat.sendMessage(systemContext);
       chatHistory.push({ role: 'user', parts: [{ text: systemContext }] }); // Store as 'user' role
     }

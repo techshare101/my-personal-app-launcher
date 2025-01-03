@@ -4,6 +4,7 @@ import { processUserInput } from '../services/chatbotService';
 import { startListening, stopListening, speak, isSpeechRecognitionSupported } from '../services/voiceService';
 import { generateResponse } from '../services/geminiService';
 import { FaMicrophone } from 'react-icons/fa';
+import ReactMarkdown from 'react-markdown';
 import {
   Box,
   IconButton,
@@ -59,6 +60,13 @@ const ChatBot = () => {
     };
 
     checkVoiceSupport();
+
+    // Cleanup function to stop listening when component unmounts
+    return () => {
+      if (isListening) {
+        stopListening();
+      }
+    };
   }, []);
 
   const scrollToBottom = () => {
@@ -96,44 +104,86 @@ const ChatBot = () => {
     setIsTyping(true);
 
     try {
-      // Add initial empty assistant message for streaming
-      setMessages(prev => [...prev, { type: 'assistant', content: '' }]);
-
-      // Process the message with Gemini
-      const context = { apps, workflows };
-      const response = await generateResponse(userMessage, context, handleStreamingResponse);
-
-      // Process any actions from the response
-      await processUserInput(response, context);
-
-      // Speak the response
-      await speak(response);
-    } catch (err) {
-      console.error('Error processing message:', err);
-      setError(err.message);
-      setMessages(prev => [...prev, { type: 'error', content: err.message }]);
-    } finally {
-      setIsTyping(false);
+      // Process command if it looks like one
+      const isCommand = /^(open|close|start|list|find|show|help|create)\s/i.test(userMessage.toLowerCase());
+      if (isCommand) {
+        const response = await processUserInput(userMessage, { apps, workflows });
+        setMessages(prev => [...prev, { type: 'assistant', content: response }]);
+      } else {
+        // Add initial empty assistant message for streaming
+        setMessages(prev => [...prev, { type: 'assistant', content: '' }]);
+        
+        // Get AI response
+        const response = await generateResponse(userMessage, { apps, workflows }, handleStreamingResponse);
+        
+        if (response) {
+          // Extract command from response if present
+          const commandMatch = response.match(/```command\n(.+)\n```/);
+          if (commandMatch) {
+            const command = commandMatch[1].trim();
+            // Execute the command directly
+            const commandResponse = await processUserInput(command, { apps, workflows });
+            setMessages(prev => [...prev, { type: 'assistant', content: commandResponse }]);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error processing message:', error);
+      setMessages(prev => [...prev, { 
+        type: 'assistant', 
+        content: 'Sorry, I encountered an error processing your request. Please try again.' 
+      }]);
     }
+
+    setIsTyping(false);
   };
 
   const handleVoiceInput = async () => {
+    // If already listening, stop
     if (isListening) {
       stopListening();
       setIsListening(false);
       return;
     }
 
+    // Reset error state
     setError(null);
-    setIsListening(true);
 
     try {
+      // Make sure previous recognition is stopped
+      stopListening();
+      await new Promise(resolve => setTimeout(resolve, 100)); // Brief pause to ensure cleanup
+
+      // Start new recognition
       await startListening(
         async (text) => {
-          setInput(text);
-          setIsListening(false);
-          // Automatically send the voice input
-          await handleSend();
+          if (text && text.trim()) {
+            // Don't set input, just process the command directly
+            const lowerText = text.toLowerCase();
+            if (lowerText !== 'stop' && lowerText !== 'stop listening') {
+              setIsListening(false);
+              // Add user's voice input to messages
+              setMessages(prev => [...prev, { type: 'user', content: text }]);
+              
+              // Process the command
+              const isCommand = /^(open|close|start|list|find|show|help|create)\s/i.test(text.toLowerCase());
+              if (isCommand) {
+                const response = await processUserInput(text, { apps, workflows });
+                setMessages(prev => [...prev, { type: 'assistant', content: response }]);
+              } else {
+                // Get AI response and execute any commands
+                const response = await generateResponse(text, { apps, workflows }, handleStreamingResponse);
+                if (response) {
+                  const commandMatch = response.match(/```command\n(.+)\n```/);
+                  if (commandMatch) {
+                    const command = commandMatch[1].trim();
+                    const commandResponse = await processUserInput(command, { apps, workflows });
+                    setMessages(prev => [...prev, { type: 'assistant', content: commandResponse }]);
+                  }
+                }
+              }
+            }
+          }
         },
         (error) => {
           console.error('Voice input error:', error);
@@ -141,11 +191,72 @@ const ChatBot = () => {
           setIsListening(false);
         }
       );
+      
+      setIsListening(true);
     } catch (err) {
       console.error('Error starting voice input:', err);
       setError(err.message);
       setIsListening(false);
     }
+  };
+
+  const renderMessage = (message) => {
+    const isUser = message.type === 'user';
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: isUser ? 'flex-end' : 'flex-start',
+          mb: 2,
+        }}
+      >
+        <Paper
+          elevation={1}
+          sx={{
+            p: 2,
+            maxWidth: '80%',
+            bgcolor: isUser ? 'rgba(144, 202, 249, 0.15)' : 'rgba(255, 255, 255, 0.05)', 
+            color: isUser ? '#90caf9' : '#fff',
+            backdropFilter: 'blur(4px)',
+            border: '1px solid',
+            borderColor: isUser
+              ? 'rgba(144, 202, 249, 0.3)'
+              : 'rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          }}
+        >
+          {isUser ? (
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                fontWeight: 500,
+                textShadow: '0 1px 1px rgba(0,0,0,0.3)',
+                letterSpacing: 0.2,
+              }}
+            >
+              {message.content}
+            </Typography>
+          ) : (
+            <Box sx={{ 
+              '& p': { m: 0 },
+              '& pre': { 
+                bgcolor: 'rgba(0, 0, 0, 0.1)', 
+                p: 1, 
+                borderRadius: 1,
+                overflowX: 'auto'
+              },
+              '& code': {
+                bgcolor: 'rgba(0, 0, 0, 0.1)',
+                p: 0.5,
+                borderRadius: 0.5,
+              },
+            }}>
+              <ReactMarkdown>{message.content}</ReactMarkdown>
+            </Box>
+          )}
+        </Paper>
+      </Box>
+    );
   };
 
   return (
@@ -219,40 +330,8 @@ const ChatBot = () => {
             }}
           >
             {messages.map((message, index) => (
-              <Box
-                key={index}
-                sx={{
-                  alignSelf: message.type === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '80%',
-                }}
-              >
-                <Paper
-                  elevation={1}
-                  sx={{
-                    p: 1,
-                    bgcolor: message.type === 'user' 
-                      ? 'rgba(144, 202, 249, 0.15)' 
-                      : 'rgba(255, 255, 255, 0.05)', 
-                    color: message.type === 'user' ? '#90caf9' : '#fff',
-                    backdropFilter: 'blur(4px)',
-                    border: '1px solid',
-                    borderColor: message.type === 'user'
-                      ? 'rgba(144, 202, 249, 0.3)'
-                      : 'rgba(255, 255, 255, 0.1)',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  }}
-                >
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      fontWeight: message.type === 'user' ? 500 : 400,
-                      textShadow: '0 1px 1px rgba(0,0,0,0.3)',
-                      letterSpacing: 0.2,
-                    }}
-                  >
-                    {message.content}
-                  </Typography>
-                </Paper>
+              <Box key={index}>
+                {renderMessage(message)}
               </Box>
             ))}
             {isTyping && (

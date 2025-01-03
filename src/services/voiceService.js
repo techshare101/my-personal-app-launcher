@@ -133,10 +133,12 @@ export const startListening = async (onResult, onError) => {
   console.log('Starting speech recognition...');
   
   try {
-    // Initialize recognition if not already done
-    if (!recognition) {
-      recognition = initializeRecognition();
-    }
+    // Make sure previous instance is stopped
+    stopListening();
+    await new Promise(resolve => setTimeout(resolve, 100)); // Brief pause for cleanup
+    
+    // Initialize new recognition instance
+    recognition = initializeRecognition();
     
     if (!recognition) {
       const error = 'Speech recognition is not supported in this browser';
@@ -168,11 +170,12 @@ export const startListening = async (onResult, onError) => {
 
     recognition.onend = () => {
       console.log('Speech recognition ended');
+      isRecognitionActive = false;
       
       // Only restart if we haven't manually stopped and have permission
-      if (!recognition.manualStop && permissionGranted) {
+      if (!recognition?.manualStop && permissionGranted) {
         try {
-          recognition.start();
+          recognition?.start();
           console.log('Recognition restarted');
           isRecognitionActive = true;
         } catch (error) {
@@ -211,16 +214,6 @@ export const startListening = async (onResult, onError) => {
         }
 
         console.log('Recognized text:', text);
-        
-        // Check for stop command
-        const lowerText = text.toLowerCase();
-        if (lowerText === 'stop' || lowerText === 'stop listening') {
-          console.log('Stop command received');
-          stopListening();
-          onResult('Stopping voice recognition.');
-          return;
-        }
-        
         onResult(text);
       } catch (error) {
         console.error('Error in onresult:', error);
@@ -245,17 +238,6 @@ export const startListening = async (onResult, onError) => {
           break;
         case 'network':
           errorMessage = 'Network error. Please check your internet connection.';
-          // Try to restart on network errors
-          try {
-            recognition.stop();
-            setTimeout(() => {
-              if (permissionGranted && !recognition.manualStop) {
-                recognition.start();
-              }
-            }, 1000);
-          } catch (error) {
-            console.error('Error handling network error:', error);
-          }
           break;
         case 'aborted':
           errorMessage = 'Speech recognition was aborted';
@@ -271,6 +253,7 @@ export const startListening = async (onResult, onError) => {
       }
       
       isRecognitionActive = false;
+      recognition = null;
       onError(errorMessage);
     };
 
@@ -281,6 +264,7 @@ export const startListening = async (onResult, onError) => {
   } catch (error) {
     console.error('Error starting speech recognition:', error);
     isRecognitionActive = false;
+    recognition = null;
     onError('Failed to start speech recognition: ' + error.message);
   }
 };
@@ -299,10 +283,19 @@ export const stopListening = () => {
         window.audioStream = null;
       }
       
-      console.log('Speech recognition stopped');
+      // Reset recognition instance
+      recognition.onstart = null;
+      recognition.onend = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition = null;
+      
+      console.log('Speech recognition stopped and cleaned up');
     } catch (error) {
       console.error('Error stopping speech recognition:', error);
       isRecognitionActive = false;
+      // Reset recognition instance even on error
+      recognition = null;
     }
   }
 };

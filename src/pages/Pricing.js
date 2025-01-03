@@ -23,7 +23,9 @@ const features = [
   'Cloud backup & sync',
   'Priority customer support',
   'Advanced security features',
-  'Regular feature updates'
+  'Monthly feature updates',
+  'Early access to new features',
+  'Premium AI capabilities'
 ];
 
 export default function Pricing() {
@@ -40,7 +42,7 @@ export default function Pricing() {
           gutterBottom
           sx={{ mb: 6, fontWeight: 'bold' }}
         >
-          Special Offer
+          Premium Subscription
         </Typography>
 
         <Card
@@ -54,7 +56,10 @@ export default function Pricing() {
         >
           <CardContent sx={{ p: 4 }}>
             <Typography variant="h4" component="div" align="center" gutterBottom>
-              Premium Plan
+              Pro Plan
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary" align="center" sx={{ mb: 3 }}>
+              Unlock the full potential of your app launcher
             </Typography>
 
             <Box sx={{ textAlign: 'center', my: 3 }}>
@@ -64,7 +69,7 @@ export default function Pricing() {
                 color="primary"
                 sx={{ fontWeight: 'bold' }}
               >
-                $29.99
+                $19.99
               </Typography>
               <Typography
                 variant="h6"
@@ -75,10 +80,13 @@ export default function Pricing() {
                   ml: 2,
                 }}
               >
-                $99.99
+                $49.99
               </Typography>
               <Typography variant="subtitle1" color="text.secondary">
-                One-time payment
+                per month
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Cancel anytime • 14-day free trial
               </Typography>
             </Box>
 
