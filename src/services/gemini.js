@@ -1,6 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI('AIzaSyD-LLeZucbVB1JgKXZj83C7LHWCu744ZsI');
+const API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
+if (!API_KEY) {
+  throw new Error('Missing Gemini API key. Please add REACT_APP_GEMINI_API_KEY to your .env file.');
+}
+
+const genAI = new GoogleGenerativeAI(API_KEY);
 
 export async function getAppRecommendations(userContext) {
   try {

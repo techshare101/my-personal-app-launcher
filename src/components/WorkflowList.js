@@ -26,21 +26,61 @@ export default function WorkflowList() {
       return;
     }
 
+    // Check if we're running in Electron
+    const isElectron = window.electron !== undefined;
+    if (!isElectron) {
+      console.error('Not running in Electron environment');
+      alert('This app must be run in Electron to launch desktop applications. Please restart using npm run electron-dev');
+      return;
+    }
+
     try {
       setRunningWorkflows(prev => new Set([...prev, workflow.id]));
 
       for (let i = 0; i < workflow.apps.length; i++) {
         const app = workflow.apps[i];
-        window.open(app.url, '_blank');
         
-        // Wait 1 second between opening apps
-        if (i < workflow.apps.length - 1) {
-          await sleep(1000);
+        try {
+          console.log(`Opening ${app.name}`);
+          
+          // If it's a web app or has a URL but no path, open in browser
+          if (app.isWebApp || (!app.path && app.url)) {
+            console.log(`Opening web app in browser: ${app.url}`);
+            window.open(app.url, '_blank');
+          }
+          // If it has a path, try to launch it as a desktop app
+          else if (app.path) {
+            console.log(`Using executable path: ${app.path}`);
+            const success = await window.electron.openApp(app.path);
+            if (!success) {
+              console.error(`Failed to open ${app.name} with path: ${app.path}`);
+              throw new Error(`Failed to open ${app.name}. Please check if the path is correct: ${app.path}`);
+            }
+          }
+          // If neither condition is met, throw error
+          else {
+            throw new Error(`No path or URL configured for ${app.name}. Please edit the app to add its location.`);
+          }
+          
+          console.log(`Successfully opened ${app.name}`);
+
+          // Wait for the configured delay before opening the next app
+          // Skip delay after the last app
+          if (i < workflow.apps.length - 1) {
+            const delay = app.delay || 2000;
+            console.log(`Waiting ${delay}ms before opening next app...`);
+            await sleep(delay);
+          }
+
+        } catch (error) {
+          console.error(`Error opening ${app.name}:`, error);
+          // Continue with next app instead of stopping the whole workflow
+          alert(`Failed to open ${app.name}: ${error.message}\nContinuing with next app...`);
         }
       }
     } catch (error) {
       console.error('Error running workflow:', error);
-      alert('Failed to run workflow. Please try again.');
+      alert(error.message || 'Failed to run workflow. Please try again.');
     } finally {
       setRunningWorkflows(prev => {
         const next = new Set(prev);

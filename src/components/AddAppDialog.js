@@ -58,18 +58,52 @@ const CATEGORY_KEYWORDS = {
 };
 
 const FALLBACK_DATA = {
+  'claude': {
+    name: 'Claude',
+    thumbnail: 'https://claude.ai/favicon.ico',
+    description: 'AI assistant by Anthropic, capable of understanding and generating human-like text.',
+    url: 'https://claude.ai',
+    category: 'ai',
+    isWebApp: true
+  },
+  'notion': {
+    name: 'Notion',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png',
+    description: 'All-in-one workspace for notes, docs, wikis, projects, and collaboration.',
+    url: 'https://notion.so',
+    category: 'productivity',
+    isWebApp: true
+  },
+  'github': {
+    name: 'GitHub',
+    thumbnail: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
+    description: 'Web-based platform for version control and collaboration.',
+    url: 'https://github.com',
+    category: 'development',
+    isWebApp: true
+  },
+  'codeium': {
+    name: 'Codeium',
+    thumbnail: 'https://codeium.com/favicon.ico',
+    description: 'AI-powered code completion and assistance.',
+    url: 'https://codeium.com',
+    category: 'development',
+    isWebApp: true
+  },
   'vscode': {
     name: 'Visual Studio Code',
     thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Visual_Studio_Code_1.35_icon.svg/512px-Visual_Studio_Code_1.35_icon.svg.png',
-    description: 'Visual Studio Code is a lightweight but powerful source code editor which runs on your desktop.',
+    description: 'Visual Studio Code is a lightweight but powerful source code editor.',
     url: 'https://code.visualstudio.com/',
+    path: 'C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe',
     category: 'development'
   },
   'chrome': {
     name: 'Google Chrome',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Google_Chrome_icon_%28February_2022%29.svg/512px-Google_Chrome_icon_%28February_2022%29.svg.png',
-    description: 'Google Chrome is a fast, secure, and free web browser, built for the modern web.',
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Google_Chrome_icon_%28February_2022%29.svg/512px-Visual_Studio_Code_1.35_icon.svg.png',
+    description: 'Google Chrome is a fast, secure, and free web browser.',
     url: 'https://www.google.com/chrome/',
+    path: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     category: 'utilities'
   },
   'audacity': {
@@ -250,6 +284,7 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
   const [formData, setFormData] = useState({
     name: '',
     url: '',
+    path: '',
     description: '',
     category: 'productivity',
     thumbnail: ''
@@ -328,27 +363,49 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
           thumbnail: formData.thumbnail || 
             `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&size=512&background=random&color=fff&bold=true&format=svg`,
           url: formData.url || `https://www.google.com/search?q=${encodeURIComponent(formData.name + ' download')}`,
-          category: formData.category
+          path: formData.path,
+          category: formData.category,
+          isWebApp: !formData.path && formData.url
         };
       } else {
         // Fetch data automatically
-        const webData = await fetchGoogleSearch(formData.name, 'web');
-        const imageData = await fetchGoogleSearch(formData.name, 'image');
+        const searchKey = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const fallbackKey = Object.keys(FALLBACK_DATA).find(key => 
+          searchKey.includes(key) || key.includes(searchKey)
+        );
 
-        appData = {
-          name: formData.name,
-          description: webData.items[0].snippet || `${formData.name} application`,
-          thumbnail: imageData.items[0].pagemap?.cse_image?.[0]?.src || 
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&size=512&background=random&color=fff&bold=true&format=svg`,
-          url: webData.items[0].link || `https://www.google.com/search?q=${encodeURIComponent(formData.name + ' download')}`,
-          category: formData.category
-        };
+        if (fallbackKey) {
+          console.log('Using fallback data for:', fallbackKey);
+          const fallbackApp = FALLBACK_DATA[fallbackKey];
+          appData = {
+            name: fallbackApp.name,
+            description: fallbackApp.description,
+            thumbnail: fallbackApp.thumbnail,
+            url: fallbackApp.url,
+            path: fallbackApp.path,
+            category: fallbackApp.category,
+            isWebApp: fallbackApp.isWebApp || (!fallbackApp.path && fallbackApp.url)
+          };
+        } else {
+          const webData = await fetchGoogleSearch(formData.name, 'web');
+          appData = {
+            name: formData.name,
+            description: webData.items[0].snippet || `${formData.name} application`,
+            thumbnail: webData.items[0].pagemap?.cse_image?.[0]?.src || 
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&size=512&background=random&color=fff&bold=true&format=svg`,
+            url: webData.items[0].link || `https://www.google.com/search?q=${encodeURIComponent(formData.name + ' download')}`,
+            path: formData.path,
+            category: formData.category,
+            isWebApp: !formData.path
+          };
+        }
       }
 
       onAdd(appData);
       setFormData({
         name: '',
         url: '',
+        path: '',
         description: '',
         category: 'productivity',
         thumbnail: ''
@@ -391,6 +448,26 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
             helperText={!manualMode ? "Try popular apps like 'vscode', 'chrome', 'slack', 'discord', 'spotify', 'chatgpt', 'bard', 'midjourney', 'claude', 'notion', 'evernote', 'pocket', etc." : ""}
           />
 
+          <TextField
+            fullWidth
+            label="Executable Path"
+            value={formData.path}
+            onChange={(e) => setFormData({ ...formData, path: e.target.value })}
+            margin="normal"
+            disabled={loading}
+            helperText="Full path to the application executable (optional for web apps)"
+          />
+
+          <TextField
+            fullWidth
+            label="URL"
+            value={formData.url}
+            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+            margin="normal"
+            disabled={loading}
+            helperText="Web URL for the application (required for web apps)"
+          />
+
           <FormControl fullWidth margin="normal">
             <InputLabel>Category</InputLabel>
             <Select
@@ -417,16 +494,6 @@ const AddAppDialog = ({ open, onClose, onAdd }) => {
 
           {manualMode && (
             <>
-              <TextField
-                fullWidth
-                label="URL"
-                value={formData.url}
-                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                margin="normal"
-                placeholder="https://example.com"
-                type="url"
-              />
-              
               <TextField
                 fullWidth
                 label="Description"

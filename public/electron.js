@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, session, systemPreferences } = require('electron');
 const path = require('path');
-const isDev = require('electron-is-dev');
+const isDev = process.env.NODE_ENV === 'development';
 const { exec } = require('child_process');
 
 let mainWindow;
@@ -50,78 +50,29 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: true,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
-      webSecurity: true,
-      permissions: ['microphone']
-    },
-  });
-
-  // Configure session permissions
-  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    const url = webContents.getURL();
-    console.log('Permission request:', { permission, url });
-
-    if (permission === 'media' || permission === 'microphone') {
-      // Check if microphone is actually available
-      const micStatus = systemPreferences.getMediaAccessStatus('microphone');
-      if (micStatus === 'not-determined') {
-        console.error('No microphone devices found');
-        callback(false);
-        return;
-      }
-      callback(true);
-      return;
+      enableRemoteModule: true,
+      preload: path.join(__dirname, 'preload.js')
     }
-
-    callback(false);
   });
 
-  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
-    return permission === 'media' || permission === 'microphone';
-  });
+  // Load the index.html from a url
+  const startUrl = isDev
+    ? 'http://localhost:3000'
+    : `file://${path.join(__dirname, '../build/index.html')}`;
 
-  // Load the app
-  const startUrl = isDev ? 'http://localhost:3000' : `file://${path.join(__dirname, '../build/index.html')}`;
   console.log('Loading URL:', startUrl);
+  mainWindow.loadURL(startUrl);
 
-  mainWindow.loadURL(startUrl)
-    .then(() => {
-      console.log('Window loaded successfully');
-      if (isDev) {
-        mainWindow.webContents.openDevTools();
-      }
-    })
-    .catch((err) => {
-      console.error('Failed to load URL:', err);
-    });
+  // Open the DevTools in development.
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
 
-  mainWindow.on('closed', () => {
+  // Emitted when the window is closed.
+  mainWindow.on('closed', function () {
     mainWindow = null;
-  });
-
-  // Handle IPC messages
-  ipcMain.handle('check-microphone-permission', async () => {
-    try {
-      const status = systemPreferences.getMediaAccessStatus('microphone');
-      console.log('Microphone permission status:', status);
-      return status;
-    } catch (error) {
-      console.error('Error checking microphone permission:', error);
-      return 'denied';
-    }
-  });
-
-  ipcMain.handle('request-microphone-permission', async () => {
-    try {
-      const granted = await requestMicrophoneAccess();
-      console.log('Microphone permission granted:', granted);
-      return granted;
-    } catch (error) {
-      console.error('Error requesting microphone permission:', error);
-      return false;
-    }
   });
 }
 
@@ -155,27 +106,90 @@ app.on('activate', () => {
 
 // Handle app operations
 ipcMain.handle('open-app', async (event, appPath) => {
-  return new Promise((resolve, reject) => {
-    exec(`start "" "${appPath}"`, (error) => {
-      if (error) {
-        console.error('Error opening app:', error);
-        reject(error);
-      } else {
-        resolve(true);
-      }
+  console.log('Attempting to open app:', appPath);
+  
+  try {
+    // Validate app path
+    if (!appPath) {
+      throw new Error('No app path provided');
+    }
+
+    // Check if path exists
+    if (!require('fs').existsSync(appPath)) {
+      throw new Error(`App path does not exist: ${appPath}`);
+    }
+
+    return new Promise((resolve, reject) => {
+      // Use start command on Windows to launch apps
+      const command = process.platform === 'win32' 
+        ? `start "" "${appPath}"`
+        : `"${appPath}"`;
+
+      exec(command, { shell: true }, (error, stdout, stderr) => {
+        if (error) {
+          console.error('Error opening app:', error);
+          console.error('stderr:', stderr);
+          reject(new Error(`Failed to open app: ${error.message}`));
+        } else {
+          console.log('App opened successfully');
+          console.log('stdout:', stdout);
+          resolve(true);
+        }
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error in open-app handler:', error);
+    throw error;
+  }
 });
 
 ipcMain.handle('close-app', async (event, appPath) => {
-  return new Promise((resolve, reject) => {
+  console.log('Attempting to close app:', appPath);
+  
+  try {
+    if (!appPath) {
+      throw new Error('No app path provided');
+    }
+
     const appName = path.basename(appPath, path.extname(appPath));
-    exec(`taskkill /IM "${appName}.exe" /F`, (error) => {
-      if (error) {
-        // Don't reject on error as the app might not be running
-        console.log('App might not be running:', error);
-      }
-      resolve(true);
+    console.log('Closing app with name:', appName);
+
+    return new Promise((resolve, reject) => {
+      exec(`taskkill /IM "${appName}.exe" /F`, (error, stdout, stderr) => {
+        if (error) {
+          // Don't reject on error as the app might not be running
+          console.log('App might not be running:', error);
+          console.log('stderr:', stderr);
+        }
+        console.log('Close app result:', stdout);
+        resolve(true);
+      });
     });
-  });
+  } catch (error) {
+    console.error('Error in close-app handler:', error);
+    throw error;
+  }
+});
+
+// Handle IPC messages
+ipcMain.handle('check-microphone-permission', async () => {
+  try {
+    const status = systemPreferences.getMediaAccessStatus('microphone');
+    console.log('Microphone permission status:', status);
+    return status;
+  } catch (error) {
+    console.error('Error checking microphone permission:', error);
+    return 'denied';
+  }
+});
+
+ipcMain.handle('request-microphone-permission', async () => {
+  try {
+    const granted = await requestMicrophoneAccess();
+    console.log('Microphone permission granted:', granted);
+    return granted;
+  } catch (error) {
+    console.error('Error requesting microphone permission:', error);
+    return false;
+  }
 });

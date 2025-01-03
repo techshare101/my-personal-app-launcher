@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useFirestore } from '../hooks/useFirestore';
 import { processUserInput } from '../services/chatbotService';
 import { startListening, stopListening, speak, isSpeechRecognitionSupported } from '../services/voiceService';
+import { generateResponse } from '../services/geminiService';
 import { FaMicrophone } from 'react-icons/fa';
 import {
   Box,
@@ -10,9 +11,13 @@ import {
   TextField,
   Typography,
   Collapse,
+  CircularProgress,
+  Drawer,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import SettingsIcon from '@mui/icons-material/Settings';
+import VoiceSettings from './VoiceSettings';
 
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +25,9 @@ const ChatBot = () => {
   const [messages, setMessages] = useState([]);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState(null);
-  const [microphoneStatus, setMicrophoneStatus] = useState('unchecked'); // 'unchecked', 'available', 'unavailable'
+  const [microphoneStatus, setMicrophoneStatus] = useState('unchecked');
+  const [isTyping, setIsTyping] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef(null);
   const { apps, workflows } = useFirestore();
 
@@ -52,313 +59,338 @@ const ChatBot = () => {
     };
 
     checkVoiceSupport();
-
-    // Add welcome message
-    setMessages([{
-      text: 'Hello! I can help you manage your apps and workflows. Type "help" to see what I can do, or click the microphone to use voice commands.',
-      sender: 'bot',
-      timestamp: new Date().toISOString(),
-      isError: false
-    }]);
   }, []);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   useEffect(() => {
-    const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
     scrollToBottom();
   }, [messages]);
 
-  const addMessage = (text, sender, isError = false) => {
-    setMessages(prev => [...prev, {
-      text,
-      sender,
-      timestamp: new Date().toISOString(),
-      isError
-    }]);
-  };
-
-  const toggleVoice = async () => {
-    console.log('Toggle voice called. Voice supported:', voiceSupported, 'Microphone status:', microphoneStatus);
-    
-    // Clear any previous errors
-    setError(null);
-
-    if (!voiceSupported) {
-      setError('Voice recognition is not supported in your browser');
-      addMessage('Voice recognition is not supported in your browser. Please type your commands instead.', 'bot', true);
-      return;
-    }
-
-    if (microphoneStatus === 'unavailable') {
-      const errorMsg = 'No microphone found. Please connect a microphone and refresh the page to use voice commands.';
-      setError(errorMsg);
-      addMessage(errorMsg, 'bot', true);
-      return;
-    }
-
-    try {
-      if (isListening) {
-        console.log('Stopping voice recognition...');
-        stopListening();
-        setIsListening(false);
+  const handleStreamingResponse = (chunk) => {
+    setMessages(prevMessages => {
+      const lastMessage = prevMessages[prevMessages.length - 1];
+      if (lastMessage && lastMessage.type === 'assistant') {
+        // Update the last message with the new chunk
+        const updatedMessages = [...prevMessages];
+        updatedMessages[updatedMessages.length - 1] = {
+          ...lastMessage,
+          content: lastMessage.content + chunk
+        };
+        return updatedMessages;
       } else {
-        console.log('Starting voice recognition...');
-        setIsListening(true);
-        await startListening(
-          async (text) => {
-            console.log('Voice command received:', text);
-            // Add user's voice input to chat
-            addMessage(text, 'user');
-            
-            try {
-              // Process the voice command
-              const response = await processUserInput(text, { apps, workflows });
-              console.log('Voice command response:', response);
-              
-              // Add bot response to chat
-              addMessage(response, 'bot');
-              
-              // Only speak if we're still listening
-              if (isListening) {
-                await speak(response);
-              }
-            } catch (error) {
-              console.error('Error processing voice command:', error);
-              const errorMessage = 'Sorry, I encountered an error processing your voice command. Please try again.';
-              addMessage(errorMessage, 'bot', true);
-              if (isListening) {
-                await speak(errorMessage);
-              }
-            }
-          },
-          (error) => {
-            console.error('Voice recognition error:', error);
-            setIsListening(false);
-            
-            // Handle specific error cases
-            let errorMessage = 'An error occurred with voice recognition. ';
-            if (error.message?.includes('device not found')) {
-              errorMessage = 'No microphone found. Please connect a microphone and try again.';
-              setMicrophoneStatus('unavailable');
-            } else if (error.message?.includes('permission')) {
-              errorMessage = 'Microphone access was denied. Please allow microphone access in your browser settings.';
-            }
-            
-            setError(errorMessage);
-            addMessage(errorMessage, 'bot', true);
-          }
-        );
+        // Add a new assistant message
+        return [...prevMessages, { type: 'assistant', content: chunk }];
       }
-    } catch (error) {
-      console.error('Error toggling voice:', error);
-      setIsListening(false);
-      const errorMessage = 'Failed to start voice recognition. Please check your microphone connection and try again.';
-      setError(errorMessage);
-      addMessage(errorMessage, 'bot', true);
-    }
+    });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userInput = input.trim();
+    const userMessage = input.trim();
     setInput('');
-    
-    // Add user message to chat
-    addMessage(userInput, 'user');
+    setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
+    setIsTyping(true);
 
     try {
-      // Process user input
-      const response = await processUserInput(userInput, { apps, workflows });
-      
-      // Add bot response to chat
-      addMessage(response, 'bot');
-      
-      // Speak the response if voice is active
-      if (isListening) {
-        await speak(response);
-      }
-    } catch (error) {
-      console.error('Error processing message:', error);
-      addMessage('Sorry, I encountered an error. Please try again.', 'bot', true);
+      // Add initial empty assistant message for streaming
+      setMessages(prev => [...prev, { type: 'assistant', content: '' }]);
+
+      // Process the message with Gemini
+      const context = { apps, workflows };
+      const response = await generateResponse(userMessage, context, handleStreamingResponse);
+
+      // Process any actions from the response
+      await processUserInput(response, context);
+
+      // Speak the response
+      await speak(response);
+    } catch (err) {
+      console.error('Error processing message:', err);
+      setError(err.message);
+      setMessages(prev => [...prev, { type: 'error', content: err.message }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleVoiceInput = async () => {
+    if (isListening) {
+      stopListening();
+      setIsListening(false);
+      return;
+    }
+
+    setError(null);
+    setIsListening(true);
+
+    try {
+      await startListening(
+        async (text) => {
+          setInput(text);
+          setIsListening(false);
+          // Automatically send the voice input
+          await handleSend();
+        },
+        (error) => {
+          console.error('Voice input error:', error);
+          setError(error);
+          setIsListening(false);
+        }
+      );
+    } catch (err) {
+      console.error('Error starting voice input:', err);
+      setError(err.message);
+      setIsListening(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        position: 'fixed',
-        bottom: '1rem',
-        right: '1rem',
-        width: '320px',
-        zIndex: 1000,
-      }}
-    >
-      <IconButton
-        onClick={() => setIsOpen(!isOpen)}
-        sx={{
-          position: 'absolute',
-          bottom: 0,
-          right: 0,
-          backgroundColor: 'primary.main',
-          color: 'white',
-          '&:hover': {
-            backgroundColor: 'primary.dark',
-          },
-        }}
-      >
-        <SmartToyIcon />
-      </IconButton>
-
-      <Collapse in={isOpen}>
+    <Box sx={{ position: 'fixed', bottom: 20, right: 20, zIndex: 1000 }}>
+      <Collapse in={isOpen} collapsedSize={0}>
         <Paper
           elevation={3}
           sx={{
-            height: '400px',
+            width: 350,
+            height: 500,
+            mb: 2,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            backgroundColor: 'background.paper',
-            border: '1px solid',
-            borderColor: 'divider',
+            backgroundColor: 'rgba(18, 18, 18, 0.85)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
           }}
         >
-          <Box
-            sx={{
-              p: 1.5,
-              borderBottom: 1,
-              borderColor: 'divider',
-              backgroundColor: 'primary.main',
-              color: 'white',
-            }}
-          >
-            <Typography variant="h6" sx={{ fontSize: '1rem' }}>AI Assistant</Typography>
-            {error && (
-              <Typography color="error" variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-                {error}
-              </Typography>
-            )}
+          <Box sx={{ 
+            p: 2, 
+            bgcolor: 'rgba(18, 18, 18, 0.95)',
+            color: '#90caf9',
+            backdropFilter: 'blur(8px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <Typography variant="h6" sx={{ 
+              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+              fontWeight: 500,
+            }}>
+              AI Assistant
+            </Typography>
+            <IconButton
+              onClick={() => setShowSettings(!showSettings)}
+              sx={{
+                color: '#90caf9',
+                '&:hover': {
+                  bgcolor: 'rgba(144, 202, 249, 0.1)',
+                },
+              }}
+            >
+              <SettingsIcon />
+            </IconButton>
           </Box>
 
           <Box
             sx={{
               flex: 1,
               overflow: 'auto',
-              p: 1.5,
+              p: 2,
               display: 'flex',
               flexDirection: 'column',
-              backgroundColor: 'background.default',
+              gap: 1,
+              backgroundColor: 'transparent',
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'rgba(0, 0, 0, 0.1)',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '4px',
+                '&:hover': {
+                  background: 'rgba(255, 255, 255, 0.2)',
+                },
+              },
             }}
           >
             {messages.map((message, index) => (
               <Box
                 key={index}
                 sx={{
-                  alignSelf: message.sender === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '85%',
-                  mb: 1,
+                  alignSelf: message.type === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '80%',
                 }}
               >
                 <Paper
                   elevation={1}
                   sx={{
                     p: 1,
-                    backgroundColor: message.sender === 'user' 
-                      ? 'primary.main'
-                      : message.isError 
-                        ? 'error.dark'
-                        : 'background.paper',
-                    color: message.sender === 'user' || message.isError
-                      ? 'white'
-                      : 'text.primary',
-                    border: theme => message.sender === 'bot' ? `1px solid ${theme.palette.divider}` : 'none',
+                    bgcolor: message.type === 'user' 
+                      ? 'rgba(144, 202, 249, 0.15)' 
+                      : 'rgba(255, 255, 255, 0.05)', 
+                    color: message.type === 'user' ? '#90caf9' : '#fff',
+                    backdropFilter: 'blur(4px)',
+                    border: '1px solid',
+                    borderColor: message.type === 'user'
+                      ? 'rgba(144, 202, 249, 0.3)'
+                      : 'rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                   }}
                 >
-                  <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{message.text}</Typography>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      fontWeight: message.type === 'user' ? 500 : 400,
+                      textShadow: '0 1px 1px rgba(0,0,0,0.3)',
+                      letterSpacing: 0.2,
+                    }}
+                  >
+                    {message.content}
+                  </Typography>
                 </Paper>
               </Box>
             ))}
+            {isTyping && (
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                p: 1,
+                borderRadius: 1,
+                bgcolor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}>
+                <CircularProgress size={16} sx={{ color: '#90caf9' }} />
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                  AI is typing...
+                </Typography>
+              </Box>
+            )}
             <div ref={messagesEndRef} />
           </Box>
 
-          <Box
-            component="form"
-            onSubmit={handleSubmit}
-            sx={{
-              p: 1.5,
-              borderTop: 1,
-              borderColor: 'divider',
-              backgroundColor: 'background.paper',
-              display: 'flex',
-              gap: 1,
-            }}
-          >
+          <Box sx={{ 
+            p: 2, 
+            display: 'flex', 
+            gap: 1, 
+            bgcolor: 'rgba(18, 18, 18, 0.95)',
+            backdropFilter: 'blur(8px)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          }}>
             <TextField
               fullWidth
               size="small"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type a message..."
-              variant="outlined"
+              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Type your message..."
+              error={!!error}
+              helperText={error}
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  backgroundColor: 'background.default',
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.08)',
+                  },
                   '& fieldset': {
-                    borderColor: 'divider',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(144, 202, 249, 0.3)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#90caf9',
                   },
                 },
                 '& .MuiOutlinedInput-input': {
-                  color: 'text.primary',
-                  fontSize: '0.875rem',
+                  color: '#fff',
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'rgba(255, 255, 255, 0.7)',
                 },
               }}
             />
-            <IconButton 
-              color="primary" 
-              type="submit"
-              size="small"
+            {voiceSupported && microphoneStatus === 'available' && (
+              <IconButton
+                color={isListening ? 'secondary' : 'primary'}
+                onClick={handleVoiceInput}
+                disabled={isTyping}
+                sx={{
+                  bgcolor: isListening ? 'rgba(244, 143, 177, 0.15)' : 'rgba(144, 202, 249, 0.15)',
+                  color: isListening ? '#f48fb1' : '#90caf9',
+                  '&:hover': {
+                    bgcolor: isListening ? 'rgba(244, 143, 177, 0.25)' : 'rgba(144, 202, 249, 0.25)',
+                  },
+                  border: '1px solid',
+                  borderColor: isListening ? 'rgba(244, 143, 177, 0.3)' : 'rgba(144, 202, 249, 0.3)',
+                }}
+              >
+                <FaMicrophone />
+              </IconButton>
+            )}
+            <IconButton
+              color="primary"
+              onClick={handleSend}
+              disabled={!input.trim() || isTyping}
               sx={{
-                backgroundColor: 'primary.main',
-                color: 'white',
-                width: 32,
-                height: 32,
+                bgcolor: 'rgba(144, 202, 249, 0.15)',
+                color: '#90caf9',
                 '&:hover': {
-                  backgroundColor: 'primary.dark',
-                },
-              }}
-            >
-              <SendIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-            <IconButton 
-              onClick={toggleVoice}
-              disabled={!voiceSupported || microphoneStatus === 'unavailable'}
-              size="small"
-              sx={{
-                backgroundColor: isListening ? 'error.main' : 'primary.main',
-                color: 'white',
-                width: 32,
-                height: 32,
-                '&:hover': {
-                  backgroundColor: isListening ? 'error.dark' : 'primary.dark',
+                  bgcolor: 'rgba(144, 202, 249, 0.25)',
                 },
                 '&.Mui-disabled': {
-                  backgroundColor: 'grey.800',
-                  color: 'grey.500',
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  color: 'rgba(255, 255, 255, 0.3)',
                 },
-                transition: 'all 0.3s ease',
+                border: '1px solid rgba(144, 202, 249, 0.3)',
               }}
             >
-              <FaMicrophone style={{ 
-                fontSize: '14px',
-                transform: isListening ? 'scale(1.1)' : 'scale(1)',
-                transition: 'transform 0.3s ease'
-              }} />
+              <SendIcon />
             </IconButton>
           </Box>
         </Paper>
       </Collapse>
+
+      <IconButton
+        color="primary"
+        onClick={() => setIsOpen(!isOpen)}
+        sx={{
+          width: 56,
+          height: 56,
+          bgcolor: 'rgba(18, 18, 18, 0.95)',
+          backdropFilter: 'blur(8px)',
+          '&:hover': { 
+            bgcolor: 'rgba(18, 18, 18, 0.98)',
+          },
+          color: '#90caf9',
+          border: '1px solid rgba(144, 202, 249, 0.3)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        }}
+      >
+        <SmartToyIcon />
+      </IconButton>
+
+      <Drawer
+        anchor="right"
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        PaperProps={{
+          sx: {
+            width: 350,
+            bgcolor: 'transparent',
+            boxShadow: 'none',
+          },
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          <VoiceSettings />
+        </Box>
+      </Drawer>
     </Box>
   );
 };

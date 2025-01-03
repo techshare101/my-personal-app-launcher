@@ -63,16 +63,56 @@ export default function WorkflowBuilder({ apps }) {
     }
 
     try {
+      // Validate that all apps have either a path or URL
+      const invalidApps = selectedApps.filter(app => {
+        if (app.isWebApp) {
+          return !app.url; // Web apps must have URL
+        }
+        return !app.path && !app.url; // Other apps must have either path or URL
+      });
+
+      if (invalidApps.length > 0) {
+        const invalidAppNames = invalidApps.map(app => app.name).join(', ');
+        throw new Error(`Missing configuration for apps: ${invalidAppNames}. Web apps must have URLs, desktop apps must have paths.`);
+      }
+
+      // Clean up app data to prevent undefined values
+      const cleanedApps = selectedApps.map((app, index) => {
+        const cleanApp = {
+          id: app.id || `app-${index}`,
+          name: app.name || 'Unnamed App',
+          category: app.category || 'unknown',
+          description: app.description || `${app.name || 'Unnamed'} application`,
+          isWebApp: app.isWebApp || (!app.path && app.url) || false,
+          delay: index === 0 ? 0 : (app.delay || 2000)
+        };
+
+        // Only include path if it exists and app is not a web app
+        if (app.path && !cleanApp.isWebApp) {
+          cleanApp.path = app.path;
+        }
+
+        // Only include URL if it exists
+        if (app.url) {
+          cleanApp.url = app.url;
+        }
+
+        // Include thumbnail if it exists
+        if (app.thumbnail) {
+          cleanApp.thumbnail = app.thumbnail;
+        }
+
+        return cleanApp;
+      });
+
       const workflowData = {
         name: workflowName.trim(),
-        apps: selectedApps.map(app => ({
-          id: app.id,
-          name: app.name,
-          url: app.url
-        })),
-        order: selectedApps.map(app => app.id)
+        apps: cleanedApps,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
+      console.log('Saving workflow:', workflowData);
       await saveWorkflow(workflowData);
       
       // Clear form after successful save

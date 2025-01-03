@@ -15,6 +15,34 @@ let permissionGranted = false;
 const synth = window.speechSynthesis;
 console.log('Speech synthesis available:', !!synth);
 
+// Voice settings
+let selectedVoice = null;
+let voiceSettings = {
+  rate: 1.0,
+  pitch: 1.0,
+  volume: 1.0
+};
+
+// Initialize voices and select a default one
+const initializeVoices = () => {
+  const voices = synth.getVoices();
+  console.log('Available voices:', voices);
+  
+  // Try to find a good quality English voice
+  selectedVoice = voices.find(voice => 
+    voice.lang.includes('en') && 
+    (voice.name.includes('Google') || voice.name.includes('Microsoft') || voice.name.includes('Natural'))
+  ) || voices[0];
+  
+  console.log('Selected voice:', selectedVoice?.name);
+  return voices;
+};
+
+// Handle voices changed event
+if (synth.onvoiceschanged !== undefined) {
+  synth.onvoiceschanged = initializeVoices;
+}
+
 const initializeRecognition = () => {
   if (!recognition && SpeechRecognition) {
     try {
@@ -118,11 +146,17 @@ export const startListening = async (onResult, onError) => {
     }
 
     // Request permission first
-    const hasPermission = await requestMicrophonePermission();
-    if (!hasPermission) {
-      const error = 'Microphone permission denied';
-      console.error(error);
-      onError(error);
+    try {
+      const hasPermission = await requestMicrophonePermission();
+      if (!hasPermission) {
+        const error = 'Microphone permission denied';
+        console.error(error);
+        onError(error);
+        return;
+      }
+    } catch (error) {
+      console.error('Error requesting microphone permission:', error);
+      onError(error.message || 'Failed to access microphone');
       return;
     }
 
@@ -144,7 +178,7 @@ export const startListening = async (onResult, onError) => {
         } catch (error) {
           console.error('Error restarting recognition:', error);
           isRecognitionActive = false;
-          onError('Error restarting recognition');
+          onError('Error restarting recognition: ' + error.message);
         }
       } else {
         isRecognitionActive = false;
@@ -153,9 +187,29 @@ export const startListening = async (onResult, onError) => {
 
     recognition.onresult = (event) => {
       try {
+        if (!event.results || event.results.length === 0) {
+          console.error('No results in recognition event');
+          onError('No speech detected');
+          return;
+        }
+
         // Get the last result
         const last = event.results.length - 1;
-        const text = event.results[last][0].transcript;
+        const result = event.results[last];
+        
+        if (!result || result.length === 0) {
+          console.error('Invalid recognition result');
+          onError('Failed to process speech');
+          return;
+        }
+
+        const text = result[0].transcript;
+        if (!text || typeof text !== 'string') {
+          console.error('Invalid recognition text:', text);
+          onError('Failed to convert speech to text');
+          return;
+        }
+
         console.log('Recognized text:', text);
         
         // Check for stop command
@@ -170,38 +224,54 @@ export const startListening = async (onResult, onError) => {
         onResult(text);
       } catch (error) {
         console.error('Error in onresult:', error);
-        onError('Error processing voice input');
+        onError('Error processing voice input: ' + error.message);
       }
     };
 
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
-      if (event.error === 'no-speech') {
-        // Ignore no-speech errors as they're common
-        return;
+      
+      let errorMessage = 'Speech recognition error';
+      
+      switch (event.error) {
+        case 'no-speech':
+          // Ignore no-speech errors as they're common
+          return;
+        case 'not-allowed':
+        case 'permission-denied':
+          permissionGranted = false;
+          isRecognitionActive = false;
+          errorMessage = 'Microphone permission denied. Please allow microphone access and try again.';
+          break;
+        case 'network':
+          errorMessage = 'Network error. Please check your internet connection.';
+          // Try to restart on network errors
+          try {
+            recognition.stop();
+            setTimeout(() => {
+              if (permissionGranted && !recognition.manualStop) {
+                recognition.start();
+              }
+            }, 1000);
+          } catch (error) {
+            console.error('Error handling network error:', error);
+          }
+          break;
+        case 'aborted':
+          errorMessage = 'Speech recognition was aborted';
+          break;
+        case 'audio-capture':
+          errorMessage = 'No microphone was found. Please ensure your microphone is properly connected.';
+          break;
+        case 'service-not-allowed':
+          errorMessage = 'Speech recognition service is not allowed';
+          break;
+        default:
+          errorMessage = `Speech recognition error: ${event.error}`;
       }
-      if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-        permissionGranted = false;
-        isRecognitionActive = false;
-        onError('Microphone permission denied. Please allow microphone access and try again.');
-        return;
-      }
-      if (event.error === 'network') {
-        // Try to restart on network errors
-        try {
-          recognition.stop();
-          setTimeout(() => {
-            if (permissionGranted && !recognition.manualStop) {
-              recognition.start();
-            }
-          }, 1000);
-        } catch (error) {
-          console.error('Error handling network error:', error);
-        }
-        return;
-      }
+      
       isRecognitionActive = false;
-      onError(event.error);
+      onError(errorMessage);
     };
 
     // Start recognition
@@ -211,7 +281,7 @@ export const startListening = async (onResult, onError) => {
   } catch (error) {
     console.error('Error starting speech recognition:', error);
     isRecognitionActive = false;
-    onError(error.message);
+    onError('Failed to start speech recognition: ' + error.message);
   }
 };
 
@@ -237,13 +307,36 @@ export const stopListening = () => {
   }
 };
 
+export const getAvailableVoices = () => {
+  return synth.getVoices();
+};
+
+export const setVoice = (voiceName) => {
+  const voices = synth.getVoices();
+  const voice = voices.find(v => v.name === voiceName);
+  if (voice) {
+    selectedVoice = voice;
+    console.log('Voice set to:', voice.name);
+    return true;
+  }
+  return false;
+};
+
+export const updateVoiceSettings = (settings) => {
+  voiceSettings = {
+    ...voiceSettings,
+    ...settings
+  };
+  console.log('Voice settings updated:', voiceSettings);
+};
+
 export const speak = (text) => {
   return new Promise((resolve, reject) => {
     console.log('Starting speech synthesis...');
     if (!synth) {
       const error = 'Speech synthesis not supported';
       console.error(error);
-      resolve(); // Resolve instead of reject to continue execution
+      resolve();
       return;
     }
 
@@ -251,10 +344,15 @@ export const speak = (text) => {
     synth.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
+    
+    // Apply voice settings
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+    utterance.lang = selectedVoice?.lang || 'en-US';
+    utterance.rate = voiceSettings.rate;
+    utterance.pitch = voiceSettings.pitch;
+    utterance.volume = voiceSettings.volume;
 
     utterance.onstart = () => {
       console.log('Speech synthesis started');
@@ -267,16 +365,21 @@ export const speak = (text) => {
 
     utterance.onerror = (event) => {
       console.error('Speech synthesis error:', event);
-      resolve(); // Resolve instead of reject to continue execution
+      resolve();
     };
 
     try {
       synth.speak(utterance);
     } catch (error) {
       console.error('Error starting speech synthesis:', error);
-      resolve(); // Resolve instead of reject to continue execution
+      resolve();
     }
   });
+};
+
+export const testSpeech = async () => {
+  console.log('Testing speech synthesis...');
+  await speak('Testing speech synthesis. If you can hear this, audio is working correctly.');
 };
 
 export const isSpeechRecognitionSupported = () => {
