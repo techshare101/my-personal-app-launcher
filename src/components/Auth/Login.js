@@ -22,6 +22,23 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const getErrorMessage = (error) => {
+    switch (error.code) {
+      case 'auth/invalid-login-credentials':
+        return 'Invalid email or password. Please check your credentials and try again.';
+      case 'auth/user-not-found':
+        return 'No account found with this email. Please sign up first.';
+      case 'auth/wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'auth/invalid-email':
+        return 'Invalid email format. Please enter a valid email.';
+      case 'auth/too-many-requests':
+        return 'Too many failed attempts. Please try again later.';
+      default:
+        return `Error: ${error.message}`;
+    }
+  };
+
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     try {
@@ -31,7 +48,7 @@ export default function Login() {
       navigate('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.message);
+      setError(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -45,7 +62,7 @@ export default function Login() {
       navigate('/dashboard');
     } catch (error) {
       console.error('Google login error:', error);
-      setError(error.message);
+      setError(getErrorMessage(error));
     } finally {
       setLoading(false);
     }

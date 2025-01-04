@@ -9,7 +9,7 @@ import {
   getRedirectResult
 } from 'firebase/auth';
 import { auth } from '../firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const AuthContext = createContext();
@@ -32,6 +32,7 @@ export function AuthProvider({ children }) {
 
     if (!userSnap.exists()) {
       try {
+        // Create user document
         await setDoc(userRef, {
           email: user.email,
           displayName: user.displayName,
@@ -40,6 +41,30 @@ export function AuthProvider({ children }) {
           lastLogin: new Date()
         });
         console.log('User document created');
+
+        // Add default apps
+        const userAppsRef = collection(db, 'users', user.uid, 'apps');
+        const defaultApps = [
+          {
+            name: 'Google',
+            url: 'https://www.google.com',
+            icon: 'https://www.google.com/favicon.ico',
+            category: 'Search',
+            createdAt: new Date()
+          },
+          {
+            name: 'GitHub',
+            url: 'https://github.com',
+            icon: 'https://github.com/favicon.ico',
+            category: 'Development',
+            createdAt: new Date()
+          }
+        ];
+
+        for (const app of defaultApps) {
+          await addDoc(userAppsRef, app);
+        }
+        console.log('Default apps created');
       } catch (error) {
         console.error('Error creating user document:', error);
       }

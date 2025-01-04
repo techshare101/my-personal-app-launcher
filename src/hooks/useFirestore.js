@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc, addDoc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, addDoc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 export function useFirestore() {
@@ -17,40 +17,42 @@ export function useFirestore() {
       return;
     }
 
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        // Load apps
-        const appsQuery = query(
-          collection(db, 'apps'),
-          where('userId', '==', currentUser.uid)
-        );
-        const appsSnapshot = await getDocs(appsQuery);
-        const appsData = appsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setApps(appsData);
+    setLoading(true);
 
-        // Load workflows
-        const workflowsQuery = query(
-          collection(db, 'workflows'),
-          where('userId', '==', currentUser.uid)
-        );
-        const workflowsSnapshot = await getDocs(workflowsQuery);
-        const workflowsData = workflowsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setWorkflows(workflowsData);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
+    // Set up real-time listener for apps
+    const userAppsRef = collection(db, 'users', currentUser.uid, 'apps');
+    const unsubscribeApps = onSnapshot(userAppsRef, (snapshot) => {
+      const appsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setApps(appsData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error loading apps:', error);
+      setLoading(false);
+    });
+
+    // Set up real-time listener for workflows
+    const workflowsQuery = query(
+      collection(db, 'workflows'),
+      where('userId', '==', currentUser.uid)
+    );
+    const unsubscribeWorkflows = onSnapshot(workflowsQuery, (snapshot) => {
+      const workflowsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setWorkflows(workflowsData);
+    }, (error) => {
+      console.error('Error loading workflows:', error);
+    });
+
+    // Cleanup function to unsubscribe from listeners
+    return () => {
+      unsubscribeApps();
+      unsubscribeWorkflows();
     };
-
-    loadData();
   }, [currentUser]);
 
   const addApp = async (appData) => {
@@ -60,9 +62,7 @@ export function useFirestore() {
         ...appData,
         createdAt: serverTimestamp(),
       });
-      const newApp = { id: docRef.id, ...appData, createdAt: serverTimestamp() };
-      setApps(prev => [...prev, newApp]);
-      return newApp;
+      return { id: docRef.id, ...appData };
     } catch (error) {
       console.error('Error adding app:', error);
       throw error;
@@ -71,11 +71,8 @@ export function useFirestore() {
 
   const updateApp = async (id, data) => {
     try {
-      const appRef = doc(db, 'apps', id);
-      await updateDoc(appRef, data);
-      setApps(prev => prev.map(app => 
-        app.id === id ? { ...app, ...data } : app
-      ));
+      const userAppsRef = doc(db, 'users', currentUser.uid, 'apps', id);
+      await updateDoc(userAppsRef, data);
     } catch (error) {
       console.error('Error updating app:', error);
       throw error;
@@ -84,8 +81,7 @@ export function useFirestore() {
 
   const deleteApp = async (id) => {
     try {
-      await deleteDoc(doc(db, 'apps', id));
-      setApps(prev => prev.filter(app => app.id !== id));
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'apps', id));
     } catch (error) {
       console.error('Error deleting app:', error);
       throw error;
@@ -99,9 +95,7 @@ export function useFirestore() {
         userId: currentUser.uid,
         createdAt: new Date().toISOString()
       });
-      const newWorkflow = { id: docRef.id, ...workflowData };
-      setWorkflows(prev => [...prev, newWorkflow]);
-      return newWorkflow;
+      return { id: docRef.id, ...workflowData };
     } catch (error) {
       console.error('Error adding workflow:', error);
       throw error;
@@ -110,11 +104,7 @@ export function useFirestore() {
 
   const updateWorkflow = async (id, data) => {
     try {
-      const workflowRef = doc(db, 'workflows', id);
-      await updateDoc(workflowRef, data);
-      setWorkflows(prev => prev.map(workflow => 
-        workflow.id === id ? { ...workflow, ...data } : workflow
-      ));
+      await updateDoc(doc(db, 'workflows', id), data);
     } catch (error) {
       console.error('Error updating workflow:', error);
       throw error;
@@ -124,7 +114,6 @@ export function useFirestore() {
   const deleteWorkflow = async (id) => {
     try {
       await deleteDoc(doc(db, 'workflows', id));
-      setWorkflows(prev => prev.filter(workflow => workflow.id !== id));
     } catch (error) {
       console.error('Error deleting workflow:', error);
       throw error;

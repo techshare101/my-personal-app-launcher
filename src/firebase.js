@@ -17,32 +17,34 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app;
+let auth;
+let db;
+let analytics;
+
 try {
   app = initializeApp(firebaseConfig);
   console.log('Firebase app initialized successfully');
+  
+  // Initialize services
+  auth = getAuth(app);
+  db = getFirestore(app);
+  
+  // Enable persistence
+  setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+      console.log('Firebase persistence enabled');
+    })
+    .catch((error) => {
+      console.error('Error enabling persistence:', error);
+    });
+
+  // Initialize Analytics only in production
+  if (process.env.NODE_ENV === 'production') {
+    analytics = getAnalytics(app);
+  }
 } catch (error) {
   console.error('Error initializing Firebase:', error);
   throw error;
 }
 
-// Initialize services
-const auth = getAuth(app);
-
-// Set persistence to LOCAL (survives browser restarts)
-setPersistence(auth, browserLocalPersistence)
-  .then(() => {
-    console.log('Auth persistence set to LOCAL');
-  })
-  .catch((error) => {
-    console.error('Error setting auth persistence:', error);
-  });
-
-const db = getFirestore(app);
-
-// Initialize Analytics only in production
-let analytics = null;
-if (process.env.NODE_ENV === 'production') {
-  analytics = getAnalytics(app);
-}
-
-export { app, auth, db };
+export { auth, db, analytics };

@@ -8,8 +8,14 @@ import { AppsProvider } from './contexts/AppsContext';
 import { WorkflowProvider } from './contexts/WorkflowContext';
 import AppLayout from './components/AppLayout';
 import theme from './theme';
+import { isWeb } from './utils/environment';
 
 function App() {
+  // Show a message if running in web environment
+  if (isWeb()) {
+    console.log('Running in web environment - some features may be limited');
+  }
+
   return (
     <AuthProvider>
       <AppsProvider>
