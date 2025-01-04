@@ -20,7 +20,7 @@ import SignUp from './Auth/SignUp';
 import PrivateRoute from './Auth/PrivateRoute';
 import Hero from './Hero';
 import Features from '../pages/Features';
-import Pricing from '../pages/Pricing';
+import Pricing from '../components/Pricing';
 import Documentation from '../pages/Documentation';
 import Footer from './Footer';
 import GetStarted from '../pages/GetStarted';

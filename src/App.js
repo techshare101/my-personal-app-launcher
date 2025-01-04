@@ -2,10 +2,12 @@ import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { SnackbarProvider } from 'notistack';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AppsProvider } from './contexts/AppsContext';
 import { WorkflowProvider } from './contexts/WorkflowContext';
+import { StripeProvider } from './contexts/StripeContext';
 import AppLayout from './components/AppLayout';
 import theme from './theme';
 import { isWeb } from './utils/environment';
@@ -22,11 +24,15 @@ function App() {
         <WorkflowProvider>
           <ThemeProvider theme={theme}>
             <CssBaseline />
-            <NotificationProvider>
-              <Router>
-                <AppLayout />
-              </Router>
-            </NotificationProvider>
+            <SnackbarProvider maxSnack={3}>
+              <StripeProvider>
+                <NotificationProvider>
+                  <Router>
+                    <AppLayout />
+                  </Router>
+                </NotificationProvider>
+              </StripeProvider>
+            </SnackbarProvider>
           </ThemeProvider>
         </WorkflowProvider>
       </AppsProvider>

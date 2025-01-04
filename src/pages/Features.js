@@ -18,6 +18,7 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VoiceOverOffIcon from '@mui/icons-material/VoiceOverOff';
 import SecurityIcon from '@mui/icons-material/Security';
 import SpeedIcon from '@mui/icons-material/Speed';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 
 const features = [
   {
@@ -74,6 +75,17 @@ const features = [
       'Resource management',
       'Cache system'
     ]
+  },
+  {
+    title: 'Workflow Automation',
+    description: 'Create powerful automated workflows to streamline your daily tasks and boost productivity.',
+    icon: <AutoFixHighIcon sx={{ fontSize: 40, color: '#9c27b0' }} />,
+    details: [
+      'Custom workflow creation',
+      'App chaining',
+      'Scheduled automation',
+      'Event-based triggers'
+    ]
   }
 ];
 
@@ -107,24 +119,17 @@ export default function Features() {
                   },
                 }}
               >
-                <Box
-                  sx={{
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                  }}
-                >
-                  {feature.icon}
-                </Box>
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography gutterBottom variant="h5" component="h2" align="center">
-                    {feature.title}
-                  </Typography>
-                  <Typography color="text.secondary" paragraph align="center">
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    {feature.icon}
+                    <Typography variant="h5" component="div" sx={{ ml: 2, fontWeight: 'bold' }}>
+                      {feature.title}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body1" color="text.secondary" paragraph>
                     {feature.description}
                   </Typography>
-                  <List>
+                  <List dense>
                     {feature.details.map((detail, idx) => (
                       <ListItem key={idx}>
                         <ListItemIcon>

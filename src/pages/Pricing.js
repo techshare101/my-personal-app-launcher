@@ -69,7 +69,7 @@ export default function Pricing() {
                 color="primary"
                 sx={{ fontWeight: 'bold' }}
               >
-                $19.99
+                $9.99
               </Typography>
               <Typography
                 variant="h6"
@@ -80,7 +80,7 @@ export default function Pricing() {
                   ml: 2,
                 }}
               >
-                $49.99
+                $39.99
               </Typography>
               <Typography variant="subtitle1" color="text.secondary">
                 per month
