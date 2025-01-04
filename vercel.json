@@ -5,7 +5,8 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "build"
+        "distDir": "build",
+        "buildCommand": "GENERATE_SOURCEMAP=false npm run build"
       }
     }
   ],
@@ -19,18 +20,7 @@
       "dest": "/favicon.ico"
     },
     {
-      "src": "^/manifest.json",
-      "dest": "/manifest.json"
-    },
-    {
-      "src": "^/asset-manifest.json",
-      "dest": "/asset-manifest.json"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "^/.*",
+      "src": ".*",
       "dest": "/index.html"
     }
   ]
