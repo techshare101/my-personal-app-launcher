@@ -60,19 +60,17 @@ const CATEGORY_KEYWORDS = {
 const FALLBACK_DATA = {
   'claude': {
     name: 'Claude',
-    thumbnail: 'https://claude.ai/favicon.ico',
-    description: 'AI assistant by Anthropic, capable of understanding and generating human-like text.',
-    url: 'https://claude.ai',
-    category: 'ai',
-    isWebApp: true
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Anthropic_logo.svg/512px-Anthropic_logo.svg.png',
+    description: 'Claude is an AI assistant by Anthropic, known for its helpful, honest, and harmless approach.',
+    url: 'https://claude.ai/',
+    category: 'ai'
   },
   'notion': {
     name: 'Notion',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png',
-    description: 'All-in-one workspace for notes, docs, wikis, projects, and collaboration.',
-    url: 'https://notion.so',
-    category: 'productivity',
-    isWebApp: true
+    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Notion-logo.svg/512px-Notion-logo.svg.png',
+    description: 'Personal workspace for notes, tasks, and knowledge management.',
+    url: 'https://www.notion.so/',
+    category: 'personal.notes'
   },
   'github': {
     name: 'GitHub',
@@ -147,20 +145,6 @@ const FALLBACK_DATA = {
     description: 'Midjourney is an AI-powered tool that generates images from textual descriptions.',
     url: 'https://www.midjourney.com/',
     category: 'ai'
-  },
-  'claude': {
-    name: 'Claude',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Anthropic_logo.svg/512px-Anthropic_logo.svg.png',
-    description: 'Claude is an AI assistant by Anthropic, known for its helpful, honest, and harmless approach.',
-    url: 'https://claude.ai/',
-    category: 'ai'
-  },
-  'notion': {
-    name: 'Notion',
-    thumbnail: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Notion-logo.svg/512px-Notion-logo.svg.png',
-    description: 'Personal workspace for notes, tasks, and knowledge management.',
-    url: 'https://www.notion.so/',
-    category: 'personal.notes'
   },
   'evernote': {
     name: 'Evernote',
